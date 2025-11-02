@@ -8,20 +8,36 @@ typedef struct {
     uint32_t cash;
     uint32_t position;
     bool retired;
+
+    // Jail-related
     bool in_jail;
+    uint32_t turns_in_jail;
     uint32_t jail_free_cards;
+
+    uint8_t railroads_owned;
+    uint8_t utilities_owned;
 } PlayerView;
+
+typedef enum PropertyType { PROPERTY, UTILITY, RAILROAD };
 
 // State for each property
 typedef struct {
+    uint32_t position;
     uint32_t property_id;
     uint32_t owner_index;
-    bool owned;
+    bool mortgaged;
+    PropertyType type;
+
+    // Street specific
     uint8_t colour_id;
+    uint32_t house_price;
     uint8_t houses;
-    uint8_t hotel;
+    bool hotel;
+
     int32_t purchase_price;
     int32_t rent0, rent1, rent2, rent3, rent4, rentH;
+
+    int32_t current_rent;
 } PropertyView;
 
 typedef struct {
@@ -45,10 +61,12 @@ typedef struct {
 // Total game state
 typedef struct {
     uint32_t game_id;
-    uint32_t players_remaining;
-    uint32_t num_properties;
     uint32_t houses_remaining;
     uint32_t hotels_remaining;
+    uint32_t current_player_index;
     const PlayerView* players;
+    uint32_t players_remaining; // Use to index players safely
     const PropertyView* properties;
+    uint32_t num_properties; // Use to index properties safely
+    uint32_t owed;
 } GameStateView;

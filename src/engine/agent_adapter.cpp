@@ -18,7 +18,7 @@ AgentAdapter::~AgentAdapter() {
 }
 
 void AgentAdapter::game_start(uint32_t agent_index, uint64_t seed) {
-    export_.vtable.game_start(self_, agent_index);
+    export_.vtable.game_start(self_, agent_index, seed);
 }
 
 Action AgentAdapter::agent_turn(const GameStateView* state) {

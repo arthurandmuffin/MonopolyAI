@@ -35,7 +35,7 @@ struct RailroadInfo {
 };
 
 struct UtilityInfo {
-    uint8_t utility_ud;
+    uint8_t utility_id;
     uint16_t purchase_price;
     std::array<uint16_t,2> multiplier;
 };
