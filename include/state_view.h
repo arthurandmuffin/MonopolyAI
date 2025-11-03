@@ -25,6 +25,7 @@ typedef struct {
     uint32_t position;
     uint32_t property_id;
     uint32_t owner_index;
+    bool is_owned;
     bool mortgaged;
     PropertyType type;
 

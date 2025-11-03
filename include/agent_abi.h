@@ -24,6 +24,8 @@ typedef enum {
     ACTION_MORTGAGE,
     ACTION_AUCTION_BID,
     ACTION_END_TURN,
+    ACTION_PAY_JAIL_FINE,
+    ACTION_USE_JAIL_CARD
 } ActionType;
 
 typedef struct {

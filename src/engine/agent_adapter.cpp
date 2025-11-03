@@ -1,6 +1,7 @@
 #include "agent_abi.h"
 #include "agent_adapter.h"
 #include "plugin_loader.h"
+#include <stdexcept>
 
 AgentAdapter::AgentAdapter(const AgentSpec& spec) : name_ (spec.name) {
     handle_ = LoadAgentLibrary(spec.path);
