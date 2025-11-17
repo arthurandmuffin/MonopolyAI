@@ -18,7 +18,7 @@ typedef struct {
     uint8_t utilities_owned;
 } PlayerView;
 
-typedef enum PropertyType { PROPERTY, UTILITY, RAILROAD };
+typedef enum PropertyType { PROPERTY, UTILITY, RAILROAD }PropertyType;
 
 // State for each property
 typedef struct {

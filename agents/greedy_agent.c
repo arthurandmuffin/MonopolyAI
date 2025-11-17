@@ -1,5 +1,5 @@
-#include "../../include/agent_abi.h"
-#include "../../include/state_view.h"
+#include "agent_abi.h"
+#include "state_view.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,7 +10,7 @@
 typedef struct {
     uint32_t agent_index;
     uint64_t seed;
-    char name[64]
+    char name[64];
 } GreedyAgent;
 
 typedef struct {
@@ -23,7 +23,7 @@ int abi_version() {
     return ABI_VERSION;
 }
 
-void* create_agent(const char* config_json) {
+void* create_agent_instance(const char* config_json) {
     GreedyAgent* agent = (GreedyAgent*)malloc(sizeof(GreedyAgent));
     if (!agent) {
         return NULL;
@@ -211,10 +211,79 @@ Action agent_turn(void* agent_ptr, const GameStateView* state) {
 }
 
 Action auction(void* agent_ptr, const GameStateView* state, const AuctionView* auction) {
+    GreedyAgent* agent = (GreedyAgent*)agent_ptr;
+    Action action = {0};
 
+    // Validate agent, state, and auction
+    if (!agent || !state || !auction) {
+        action.type = ACTION_END_TURN;
+        return action;
+    }
+
+    const PlayerView* player = &state->players[agent->agent_index];
+    
+    // Auction startegy: bid up to 75% of calculated property value, keeping a cash buffer of 200
+    float property_value = calculate_property_value(state, auction->property_id, agent->agent_index);
+    const PropertyView* property = NULL;
+    for (uint32_t i = 0; i < state->num_properties; ++i) {
+        if (state->properties[i].property_id == auction->property_id) {
+            property = &state->properties[i];
+            break;
+        }
+    }
+
+    if (!property) {
+        action.type = ACTION_END_TURN;
+        return action;
+    }
+    // Calculate max bid and cash limit
+    uint32_t max_bid = (uint32_t)((float)property->purchase_price * property_value * 0.75f);
+    uint32_t cash_limit = player->cash > 200 ? player->cash - 200 : 0;
+
+    if (max_bid > cash_limit) {
+        max_bid = cash_limit;
+    }
+
+    
+    if (max_bid >= 10 && property_value >= 0.1f) {
+        action.type = ACTION_AUCTION_BID;
+        action.auction_bid = max_bid;
+    } else {
+        action.type = ACTION_END_TURN;
+    }
+
+    return action;
 }
 
 Action trade_offer(void* agent_ptr, const GameStateView* state, const TradeOffer* offer) {
+    GreedyAgent* agent = (GreedyAgent*)agent_ptr;
+    Action action = {0};
+    action.type = ACTION_TRADE_RESPONSE;
 
+    if (!agent || !state || !offer) {
+        action.trade_response = false;
+        return action;
+    }
+
+    // Accept if the trade is favorable (more cash received than given)
+    bool accept = (offer->offer_to.cash > offer->offer_from.cash);
+    action.trade_response = accept;
+    return action;
 }
 
+// Export vtable
+AgentVTable vtable = {
+    .abi_version = abi_version,
+    .create_agent = create_agent,
+    .destroy_agent = destroy_agent,
+    .game_start = game_start,
+    .agent_turn = agent_turn,
+    .auction = auction,
+    .trade_offer = trade_offer
+};
+
+AGENT_API AgentExport create_agent(const char* config_json) {
+    AgentExport export;
+    export.vtable = vtable;
+    return export;
+}
