@@ -23,13 +23,13 @@ void AgentAdapter::game_start(uint32_t agent_index, uint64_t seed) {
 }
 
 Action AgentAdapter::agent_turn(const GameStateView* state) {
-    export_.vtable.agent_turn(self_, state);
+    return export_.vtable.agent_turn(self_, state);
 }
 
 Action AgentAdapter::auction(const GameStateView* state, const AuctionView* auction) {
-    export_.vtable.auction(self_, state, auction);
+    return export_.vtable.auction(self_, state, auction);
 }
 
 Action AgentAdapter::trade_offer(const GameStateView* state, const TradeOffer* offer) {
-    export_.vtable.trade_offer(self_, state, offer);
+    return export_.vtable.trade_offer(self_, state, offer);
 }
