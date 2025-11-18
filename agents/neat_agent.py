@@ -211,9 +211,9 @@ class NEATAgent:
         return score
     
     def agent_turn(self, state):
-        # if no neural network, use simple heuristic
+        # if no neural network, use heuristic
         if not self.net:
-            return self._simple_heuristic_turn(state)
+            return self.heuristic_turn(state)
         
         agent_player = state['players'][self.agent_index]
         
@@ -266,9 +266,9 @@ class NEATAgent:
         return {'action_type': 5} # ACTION_END_TURN
     
     def auction(self, state: Dict, auction: Dict) -> Dict:
-        # if no neural network, use simple heuristic
+        # if no neural network, use heuristic
         if not self.net:
-            return self._simple_heuristic_auction(state, auction)
+            return self.heuristic_auction(state, auction)
         
         features = self.extract_features(state)
         output = self.net.activate(features)
@@ -308,7 +308,6 @@ class NEATAgent:
         output = self.net.activate(features)
         
         # output[2] is trade acceptance threshold
-        # Simple heuristic: accept if we're getting more cash
         cash_gain = offer['offer_to']['cash'] - offer['offer_from']['cash']
         accept = output[2] > 0.5 and cash_gain > 0
         
@@ -317,7 +316,7 @@ class NEATAgent:
             'trade_response': accept
         }
     
-    def _simple_heuristic_turn(self, state: Dict) -> Dict:
+    def heuristic_turn(self, state: Dict) -> Dict:
         # Fallback heuristic when no network is available
         agent_player = state['players'][self.agent_index]
         current_position = agent_player['position']
@@ -331,7 +330,7 @@ class NEATAgent:
         
         return {'action_type': 5} # ACTION_END_TURN
     
-    def _simple_heuristic_auction(self, state: Dict, auction: Dict) -> Dict:
+    def heuristic_auction(self, state: Dict, auction: Dict) -> Dict:
         # Fallback auction heuristic
         agent_player = state['players'][self.agent_index]
         property_id = auction['property_id']
