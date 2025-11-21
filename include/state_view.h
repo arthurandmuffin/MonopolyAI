@@ -13,7 +13,9 @@ typedef struct {
     bool in_jail;
     uint32_t turns_in_jail;
     uint32_t jail_free_cards;
+    uint32_t double_rolls;
 
+    // Not used in engine, for agent learning only
     uint8_t railroads_owned;
     uint8_t utilities_owned;
 } PlayerView;

@@ -2,6 +2,7 @@
 #include <array>
 #include <cstdint>
 #include <string_view>
+#include <span>
 
 enum class TileType: uint8_t {
     Go, Property, Railroad, Utility, Tax, Chance, Community, Jail, FreeParking, GoToJail
@@ -12,7 +13,7 @@ enum class Colour: uint8_t {
 };
 
 struct TileInfo {
-    uint8_t index;
+    uint8_t index; // Position on map
     TileType type;
     std::string_view name;
     Colour colour;
@@ -26,6 +27,11 @@ struct PropertyInfo {
     uint16_t purchase_price;
     uint8_t house_cost;
     std::array<uint16_t,6> rent;
+};
+
+struct ColourGroup {
+    std::array<uint8_t, 3> tiles{};
+    uint8_t count;
 };
 
 struct RailroadInfo {
@@ -54,6 +60,8 @@ struct Board {
     std::array<int8_t,40> tile_railroad_index{};
     std::array<int8_t,40> tile_utility_index{};
 
+    std::array<ColourGroup, 8> colour_to_tiles;
+
     constexpr const PropertyInfo* propertyByTile(uint8_t tile_id) const {
         int8_t id = tile_property_index[tile_id];
         return (id >= 0) ? &properties[static_cast<size_t>(id)] : nullptr;
@@ -65,6 +73,17 @@ struct Board {
 
     constexpr const int utilityByTile(uint8_t tile_id) const {
         return tile_utility_index[tile_id];
+    }
+
+    constexpr const ColourGroup& tilesOfColour(Colour c) const {
+        return colour_to_tiles[static_cast<size_t>(c)];
+    }
+
+    constexpr uint8_t jailPosition() const {
+        for (const auto& t : tiles) {
+            if (t.type == TileType::GoToJail) return t.index;
+        }
+        return static_cast<uint8_t>(255); // not found sentinel
     }
 };
 

@@ -40,6 +40,7 @@ public:
 private:
     GameConfig cfg_;
     std::mt19937_64 rng_;
+    const Board& board_;
     std::uniform_int_distribution<int> dice_;
     std::vector<AgentAdapter> agent_adapters_;
     GameStateView state_;
@@ -49,6 +50,16 @@ private:
 
     void init_setup();
     RollResult dice_roll();
+    bool update_position(PlayerView& player, RollResult diceroll);
+    void handle_position(PlayerView& player);
+    bool is_monopoly(const PropertyInfo* street);
+    void jail(PlayerView& player);
+    uint32_t get_rent(PlayerView& player);
+    uint32_t get_street_rent(PlayerView& player, const PropertyInfo* street);
+    uint32_t get_railroad_rent(PlayerView& player, const int railroadIndex);
+    uint32_t get_utility_rent(PlayerView& player, const int utilityIndex);
+    uint32_t compute_rent(uint32_t player_index);
+    bool pay(PlayerView& player, uint32_t amount);
 
     void auction(uint32_t property_id);
 };
