@@ -28,8 +28,9 @@ class NEATAgent:
             if self.genome:
                 self.net = neat.nn.FeedForwardNetwork.create(self.genome, self.neat_config)
     
-    def game_start(self, agent_index: int):
+    def game_start(self, agent_index: int, seed: int):
         self.agent_index = agent_index
+        self.seed = seed
     
     def extract_features(self, state: Dict) -> np.ndarray:
         """
@@ -134,10 +135,12 @@ class NEATAgent:
         - Railroads/utilities offered
         - Monopoly completion potential
         """
+        features = []
+
         # Cash difference
         cash_gain = offer['offer_to']['cash'] - offer['offer_from']['cash']
         
-        # Properties offered to you
+        # Properties offered
         props_to = offer['offer_to'].get('properties', [])
         props_from= offer['offer_from'].get('properties', [])
         
@@ -149,13 +152,19 @@ class NEATAgent:
         value_to = sum(prop_values.get(pid, 0) for pid in props_to)
         value_from = sum(prop_values.get(pid, 0) for pid in props_from)
         
-        # Railroads/utilities offered
-        railroads_to = sum(1 for pid in props_to if state['properties'][pid]['type'] == 2)
-        utilities_to = sum(1 for pid in props_to if state['properties'][pid]['type'] == 1)
+        # Railroads/utilities 
+        props_by_id = {}
+        for p in state['properties']:
+            props_by_id[p['property_id']] = p
+
+        railroads_to = sum(1 for pid in props_to if props_by_id.get(pid, {}).get('type') == 2)
+        utilities_to = sum(1 for pid in props_to if props_by_id.get(pid, {}).get('type') == 1)
         
         # Monopoly completion 
         monopoly_potential = 0
         for pid in props_to:
+            if pid not in props_by_id:
+                continue
             prop = state['properties'][pid]
             same_color_owned = sum(
                 1 for p in state['properties']
@@ -168,8 +177,8 @@ class NEATAgent:
             if same_color_owned + 1 == total_in_group:
                 monopoly_potential += 1
         
-        # Normalize and pad/truncate to fixed size
-        features = [
+        # Normalize
+        features.extend([
             cash_gain / 2000.0,
             num_props_to / 5.0,
             num_props_from / 5.0,
@@ -178,13 +187,24 @@ class NEATAgent:
             railroads_to / 4.0,
             utilities_to / 2.0,
             monopoly_potential, # higher weight -> dont normalize
-        ]
+        ])
         while len(features) < 10:
             features.append(0.0)
         return np.array(features, dtype=np.float32)
     
-    def evaluate_property(self, state: Dict, property_id: int) -> float:
-        # Evaluate property value for auction bidding
+    def extract_property_features(self, state: Dict, property_id: int) -> np.ndarray:
+        '''
+        Extract features specific to a property.
+        Features include:
+        - Purchase price
+        - Colour group
+        - Type (property, utility, railroad)
+        - Monopoly progress
+        - Affordability
+        - Rent potential
+        '''
+        features = []
+        
         prop = None
         for p in state['properties']:
             if p['property_id'] == property_id:
@@ -192,24 +212,44 @@ class NEATAgent:
                 break
         
         if not prop:
-            return 0.0
+            return np.zeros(10, dtype=np.float32)
         
+        # Monopoly progress
         agent_player = state['players'][self.agent_index]
-        
-        # if can't afford, no value
-        if agent_player['cash'] < prop['purchase_price'] * 1.2:
-            return 0.0
-        
-        score = 0.5  # Base score
-        
-        # Prefer completing color groups
-        same_color_owned = sum(
+        same_colour_owned = sum(
             1 for p in state['properties']
-            if p['colour_id'] == prop['colour_id'] and p['owner_index'] == self.agent_index
+            if p['is_owned'] and p['colour_id'] == prop['colour_id'] and p['owner_index'] == self.agent_index
         )
-        score += same_color_owned * 0.2
-        return score
-    
+        total_in_group = sum(
+            1 for p in state['properties']
+            if p['colour_id'] == prop['colour_id']
+        )
+        monopoly_progress = same_colour_owned / total_in_group
+        monopoly_complete = 1.0 if same_colour_owned == (total_in_group - 1)else 0.0
+
+        # Affordability
+        affordability = prop['purchase_price'] / max(agent_player['cash'], 1)
+        cash_after_purchase = (agent_player['cash'] - prop['purchase_price']) 
+
+        # Rent potential
+        rent_potential = prop['base_rent'] / max(agent_player['cash'], 1)
+
+        features.extend([
+            prop['purchase_price'] / 400.0,
+            prop['colour_id'] / 8.0,
+            1.0 if prop['type'] == 0 else 0.0, # Property
+            1.0 if prop['type'] == 1 else 0.0, # Utility
+            1.0 if prop['type'] == 2 else 0.0, # Railroad
+            monopoly_progress,
+            monopoly_complete,
+            affordability,
+            cash_after_purchase / 2000.0,
+            rent_potential,
+        ])
+        while len(features) < 10:
+            features.append(0.0)
+        return np.array(features, dtype=np.float32)
+
     def agent_turn(self, state):
         # if no neural network, use heuristic
         if not self.net:
@@ -249,9 +289,11 @@ class NEATAgent:
         
         if property_at_position:
             # Decide whether to buy with neural network
-            features = self.extract_features(state)
+            base_features = self.extract_features(state)
+            prop_features = self.extract_property_features(state, property_at_position['property_id'])
+            features = np.concatenate([base_features, prop_features])
             output = self.net.activate(features)
-            buy_score = output[0] + self.evaluate_property(state, property_at_position['property_id'])
+            buy_score = output[0]
             if buy_score > 0.5 and agent_player['cash'] > property_at_position['purchase_price']:
                 return {
                     'action_type': 0,  # ACTION_LANDED_PROPERTY
@@ -270,12 +312,9 @@ class NEATAgent:
         if not self.net:
             return self.heuristic_auction(state, auction)
         
-        features = self.extract_features(state)
-        output = self.net.activate(features)
-        
         agent_player = state['players'][self.agent_index]
         property_id = auction['property_id']
-        
+
         # Find the property
         prop = None
         for p in state['properties']:
@@ -286,21 +325,28 @@ class NEATAgent:
         if not prop:
             return {'action_type': 5}  # END_TURN (no bid)
         
-        # Bid based on neural network output and property value
-        property_value = self.evaluate_property(state, property_id)
-        bid_multiplier = output[1] * property_value
-        bid_amount = int(prop['purchase_price'] * bid_multiplier * 0.8)
+        features = np.concatenate([self.extract_features(state), self.extract_property_features(state, property_id)])
+        output = self.net.activate(features)
         
-        # Only bid if we can afford it and it's reasonable
-        if bid_amount > 0 and bid_amount < agent_player['cash'] * 0.3:
+        # Bid based on neural network output and property value
+        bid_multiplier = output[1]
+        max_bid = int(prop['purchase_price'] * bid_multiplier * 0.8)
+        cash_limit = int(agent_player['cash'] * 0.3)
+        bid = min(max_bid, cash_limit)
+
+        if bid >= 10 and bid_multiplier > 0.3:
             return {
                 'action_type': 4,  # ACTION_AUCTION_BID
-                'auction_bid': bid_amount
+                'auction_bid': bid
             }
-        
+
         return {'action_type': 5}
     
     def trade_offer(self, state: Dict, offer: Dict) -> Dict:
+        # if no neural network, use heuristic
+        if not self.net:
+            return self.heuristic_trade_offer(state, offer)
+        
         # Use neural network to evaluate trade
         features = self.extract_features(state)
         trade_features = self.extract_trade_features(state, offer)
@@ -344,3 +390,13 @@ class NEATAgent:
                     }
         
         return {'action_type': 5} # ACTION_END_TURN
+    
+    def heuristic_trade_offer(self, state: Dict, offer: Dict) -> Dict:
+        # Fallback trade heuristic
+        cash_gain = offer['offer_to']['cash'] - offer['offer_from']['cash']
+        accept = cash_gain > 0
+        
+        return {
+            'action_type': 2,  # ACTION_TRADE_RESPONSE
+            'trade_response': accept
+        }
