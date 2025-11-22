@@ -87,43 +87,42 @@ class NEATAgent:
         
         # Opponent features (aggregated)
         if opponents:
-            avg_opp_cash = sum(p['cash'] for p in opponents) / len(opponents) / 2000.0
+            avg_opp_cash = sum(p['cash'] for p in opponents) / len(opponents) 
             avg_opp_properties = sum(
                 1 for prop in state['properties'] 
                 if prop['owner_index'] != self.agent_index and prop['is_owned']
-            ) / (28.0 * len(opponents))
-            max_opp_cash = max(p['cash'] for p in opponents) / 2000.0
+            ) / len(opponents)
+            max_opp_cash = max(p['cash'] for p in opponents) 
+            active_opponents = len([p for p in opponents if not p['retired']]) 
             
             features.extend([
-                avg_opp_cash,
-                avg_opp_properties,
-                max_opp_cash,
-                len([p for p in opponents if not p['retired']]) / 3.0,
+                avg_opp_cash / 2000.0,
+                avg_opp_properties / 28.0,
+                max_opp_cash / 2000.0,
+                active_opponents / 3.0,
             ])
         else:
             features.extend([0.0, 0.0, 0.0, 0.0])
         
         # Property availability
-        unowned_properties = sum(1 for prop in state['properties'] if not prop['is_owned'])
-        features.append(unowned_properties / 28.0)
-        
-        # Resource availability
-        features.extend([
-            state['houses_remaining'] / 32.0,
-            state['hotels_remaining'] / 12.0,
-        ])
+        unowned_properties = sum(1 for prop in state['properties'] if not prop['is_owned'])        
         
         # Game progress indicator
         total_wealth = sum(p['cash'] for p in state['players'])
-        our_wealth_ratio = agent_player['cash'] / max(total_wealth, 1)
-        features.append(our_wealth_ratio)
+        wealth_ratio = agent_player['cash'] / max(total_wealth, 1)
         
-        # Pad to fixed size of 100
-        features = features[:100]
-        while len(features) < 100:
+        features.extend([
+            unowned_properties / 28.0,
+            state['houses_remaining'] / 32.0,
+            state['hotels_remaining'] / 12.0,
+            wealth_ratio,
+            state['owed'] / 2000.0
+        ])
+        # Pad to fixed size of 30
+        while len(features) < 30:
             features.append(0.0)
         
-        return np.array(features, dtype=np.float32)
+        return np.array(features[:30], dtype=np.float32)
     
     def extract_trade_features(self, state: Dict, offer: Dict) -> np.ndarray:
         """
@@ -165,16 +164,17 @@ class NEATAgent:
         for pid in props_to:
             if pid not in props_by_id:
                 continue
-            prop = state['properties'][pid]
+            prop = props_by_id[pid]
             same_color_owned = sum(
                 1 for p in state['properties']
-                if p['colour_id'] == prop['colour_id'] and p['owner_index'] == self.agent_index
+                if p['is_owned'] and p['colour_id'] == prop['colour_id']
+                and p['owner_index'] == self.agent_index
             )
-            total_in_group = sum(
+            total_in_color = sum(
                 1 for p in state['properties']
                 if p['colour_id'] == prop['colour_id']
             )
-            if same_color_owned + 1 == total_in_group:
+            if same_color_owned + 1 == total_in_color:
                 monopoly_potential += 1
         
         # Normalize
@@ -187,10 +187,11 @@ class NEATAgent:
             railroads_to / 4.0,
             utilities_to / 2.0,
             monopoly_potential, # higher weight -> dont normalize
+            offer['offer_to'].get('jail_cards', 0) / 2.0,
         ])
         while len(features) < 10:
             features.append(0.0)
-        return np.array(features, dtype=np.float32)
+        return np.array(features[:10], dtype=np.float32)
     
     def extract_property_features(self, state: Dict, property_id: int) -> np.ndarray:
         '''
@@ -248,7 +249,7 @@ class NEATAgent:
         ])
         while len(features) < 10:
             features.append(0.0)
-        return np.array(features, dtype=np.float32)
+        return np.array(features[:10], dtype=np.float32)
 
     def agent_turn(self, state):
         # if no neural network, use heuristic
@@ -263,20 +264,6 @@ class NEATAgent:
                 return {'action_type': 7}  # ACTION_USE_JAIL_CARD
             elif agent_player['cash'] >= 50:
                 return {'action_type': 6}  # ACTION_PAY_JAIL_FINE
-        
-        # Handle debt
-        if state['owed'] > agent_player['cash']:
-            # Find property to mortgage
-            for prop in state['properties']:
-                if (prop['is_owned'] and 
-                    prop['owner_index'] == self.agent_index and 
-                    not prop['mortgaged']):
-                    return {
-                        'action_type': 3,  # ACTION_MORTGAGE
-                        'mortgage_property': prop['property_id']
-                    }
-            # No properties to mortgage - bankruptcy
-            return {'action_type': 5}  # ACTION_END_TURN
         
         # Check if on unowned property
         current_position = agent_player['position']
@@ -353,7 +340,7 @@ class NEATAgent:
         features = np.concatenate([features, trade_features])
         output = self.net.activate(features)
         
-        # output[2] is trade acceptance threshold
+        # output[2] -> trade acceptance score
         cash_gain = offer['offer_to']['cash'] - offer['offer_from']['cash']
         accept = output[2] > 0.5 and cash_gain > 0
         
