@@ -29,7 +29,7 @@ uint32_t Engine::get_street_rent(PlayerView& player, const PropertyInfo* street)
     // Nothing built
     if (!property.hotel && property.houses == 0) {
         uint32_t base_rent = street->rent[0];
-        if (is_monopoly(street)) {
+        if (is_monopoly(street, true)) {
             return 2 * base_rent;
         }
         return base_rent;
@@ -72,38 +72,28 @@ uint32_t Engine::get_utility_rent(PlayerView& player, const int utilityIndex) {
     }
 }
 
-int Engine::is_monopoly(const PropertyInfo* street) {
+// active_monopoly to see if all unmortgaged as well
+bool Engine::is_monopoly(const PropertyInfo* street, bool active_monopoly) {
     const ColourGroup& colour_group = this->board_.tilesOfColour(street->colour);
     uint32_t owner = -1;
     for (int i = 0; i < colour_group.count; i++) {
         PropertyView& property = this->properties_[this->position_to_properties_[colour_group.tiles[i]]];
         // no monopoly if unowned property
         if (!property.is_owned) {
-            return 0;
+            return false;
+        }
+
+        if (active_monopoly && property.mortgaged) {
+            return false;
         }
         // init
         if (owner == -1) {
             owner = property.owner_index;
         } else if (owner != property.owner_index) {
-            return 0;
+            return false;
         }
     }
-    return static_cast<int>(colour_group.count);
-}
-
-bool Engine::developed_monopoly(PropertyView* property) {
-    if (property->houses > 0) {
-        return true;
-    }
-    const ColourGroup& group = this->board_.tilesOfColour(static_cast<Colour>(property->colour_id));
-    for (int i = 0; i < group.count; i++) {
-        int index = this->position_to_properties_[group.tiles[i]];
-        PropertyView* p = &this->properties_[index];
-        if (p->houses > 0) {
-            return true;
-        }
-    }
-    return false;
+    return true;
 }
 
 bool Engine::developed_monopoly(PropertyView* property) {

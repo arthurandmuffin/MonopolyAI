@@ -44,16 +44,16 @@ typedef struct {
 } PropertyView;
 
 typedef struct {
-    uint32_t* property_ids;
+    uint32_t* properties; // position
     uint8_t property_num;
     uint32_t cash;
     uint32_t jail_cards;
 } TradeDetail;
 
 typedef struct {
-    uint32_t prop_player_index;
-    TradeDetail offer_from;
-    TradeDetail offer_to;
+    uint32_t player_to_offer; // Index of player trying to trade w/, property.owner_index
+    TradeDetail offer_from; // things offered by trade proposer
+    TradeDetail offer_to; // things trade proposer wants
 } TradeOffer;
 
 // Optional struct for auction

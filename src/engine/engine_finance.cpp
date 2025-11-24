@@ -58,7 +58,7 @@ void Engine::pay_by_mortgage(PlayerView& player, std::vector<PropertyView*> unde
                 const PropertyInfo* asset_info = this->board_.propertyByTile(asset->position);
                 assert(asset_info);
 
-                if (is_monopoly(asset_info)) {
+                if (is_monopoly(asset_info, true)) {
                     const ColourGroup group = this->board_.tilesOfColour(asset_info->colour);
                     bool mortgage_ineligible = false;
 
@@ -297,6 +297,77 @@ void Engine::pay_by_houses(PlayerView& player, std::vector<PropertyView*> develo
     return;
 }
 
+void Engine::unmortgage(PlayerView& player, PropertyView* property) {
+    uint32_t unmortgage_cost = static_cast<uint32_t>((property->purchase_price / 2) * 1.1);
+    assert(property->mortgaged);
+    assert(property->owner_index == player.player_index);
+    assert(player.cash >= unmortgage_cost);
+    assert(property->houses == 0);
+
+    player.cash -= unmortgage_cost;
+    property->mortgaged = false;
+
+    switch (property->type) {
+    case (PropertyType::PROPERTY): {
+        const PropertyInfo* property_info = this->board_.propertyByTile(property->position);
+        if (is_monopoly(property_info, true)) {
+            const ColourGroup group = this->board_.tilesOfColour(property_info->colour);
+            for (int i = 0; i < group.count; i++) {
+                int index = this->position_to_properties_[group.tiles[i]];
+                PropertyView& p = this->properties_[index];
+                assert(p.owner_index == player.player_index);
+                if (p.houses == 0) {
+                    p.current_rent = p.rent0 * 2;
+                }
+            }
+        }
+    }
+    case (PropertyType::RAILROAD): {
+        int railroads_active = 0;
+        for (auto position : this->board_.railroad_positions) {
+            int index = this->position_to_properties_[position];
+            const PropertyView& railroad = this->properties_[index];
+            if (railroad.owner_index == player.player_index && !railroad.mortgaged) {
+                railroads_active++;
+            }
+        }
+        assert(railroads_active >= 1);
+
+        const auto& rent_info = this->board_.railroads[0].rent;
+        for (auto position : this->board_.railroad_positions) {
+            int index = this->position_to_properties_[position];
+            PropertyView& railroad = this->properties_[index];
+            if (railroad.owner_index == player.player_index) {
+                railroad.current_rent = rent_info[railroads_active - 1];
+            }
+        }
+        break;
+    }
+    case (PropertyType::UTILITY): {
+        int utilities_active = 0;
+        for (auto position : this->board_.utility_positions) {
+            int index = this->position_to_properties_[position];
+            const PropertyView& utility = this->properties_[index];
+            if (utility.owner_index == player.player_index && !utility.mortgaged) {
+                utilities_active++;
+            }
+        }
+        assert(utilities_active >= 1);
+
+        const double average_roll = 7.0;
+        const auto& multipliers = this->board_.utilities[0].multiplier;
+        for (auto position : this->board_.utility_positions) {
+            int index = this->position_to_properties_[position];
+            PropertyView& utility = this->properties_[index];
+            if (utility.owner_index == player.player_index) {
+                utility.current_rent = average_roll * multipliers[utilities_active - 1];
+            }
+        }
+        break;
+    }
+    }
+}
+
 void Engine::mortgage(PlayerView& player, PropertyView* property) {
     assert(!property->mortgaged);
     assert(property->owner_index == player.player_index);
@@ -306,7 +377,7 @@ void Engine::mortgage(PlayerView& player, PropertyView* property) {
         assert(!property->hotel);
         assert(property->houses == 0);
         const PropertyInfo* asset_info = this->board_.propertyByTile(property->position);
-        if (is_monopoly(asset_info)) {
+        if (is_monopoly(asset_info, true)) {
             const ColourGroup group = this->board_.tilesOfColour(asset_info->colour);
             for (int i = 0; i < group.count; i++) {
                 int index = this->position_to_properties_[group.tiles[i]];
@@ -382,6 +453,9 @@ void Engine::mortgage(PlayerView& player, PropertyView* property) {
 }
 
 void Engine::auction(PropertyView* property) {
+    assert(property->houses == 0);
+    property->owner_index = -1;
+    property->is_owned = false;
     while (true) {
         int index = this->position_to_properties_[property->position];
         AuctionView auction = {
@@ -446,6 +520,7 @@ void Engine::auction(PropertyView* property) {
         assert(winner.cash >= auction.current_bid);
         winner.cash -= auction.current_bid;
         property->owner_index = highest_bidder;
+        property->is_owned = true;
         return;
     }
 }

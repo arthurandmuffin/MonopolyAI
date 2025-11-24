@@ -137,3 +137,7 @@ void Engine::community_card_draw(PlayerView& player) {
     }
     this->community_deck_.push_back(drawn_card);
 }
+
+void Engine::chance_card_draw(PlayerView& player) {
+    return;
+}
