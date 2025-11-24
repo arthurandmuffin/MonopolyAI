@@ -25,7 +25,7 @@ typedef enum PropertyType { PROPERTY, UTILITY, RAILROAD }PropertyType;
 // State for each property
 typedef struct {
     uint32_t position;
-    uint32_t property_id;
+    uint32_t property_id; // dont feed this to neural net
     uint32_t owner_index;
     bool is_owned;
     bool mortgaged;
@@ -58,7 +58,7 @@ typedef struct {
 
 // Optional struct for auction
 typedef struct {
-    uint32_t property_position;
+    uint32_t property_id;
     uint32_t current_bid;
 } AuctionView;
 

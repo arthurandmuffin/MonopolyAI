@@ -71,9 +71,11 @@ private:
     bool developed_monopoly(PropertyView* property);
     void sell_house(PlayerView& player, PropertyView* property);
     void build_house(PlayerView& player, PropertyView* property);
-    void penalize(PlayerView* player);
+    void penalize(PlayerView& player);
     void community_card_draw(PlayerView& player);
     void chance_card_draw(PlayerView& player);
-
+    bool in_jail(PlayerView& player);
+    bool handle_action(PlayerView& player, Action player_action);
+    void buy_property(PlayerView& player, PropertyView* property);
     void auction(PropertyView* property);
 };
