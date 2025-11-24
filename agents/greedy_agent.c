@@ -165,6 +165,7 @@ Action agent_turn(void* agent_ptr, const GameStateView* state) {
         }
     }
 
+    /* Mortgage handling handled by engine
     // Handle payment when mortgage needed
     if (state->owed > 0 && state->owed > player->cash) {
         // Mortgage properties until enough cash
@@ -181,6 +182,7 @@ Action agent_turn(void* agent_ptr, const GameStateView* state) {
             return action;
         }
     }
+        */
 
     // Buying unowned property
     const PropertyView* landed_property = NULL;
@@ -193,8 +195,8 @@ Action agent_turn(void* agent_ptr, const GameStateView* state) {
 
     if (landed_property && !landed_property->is_owned) {
         uint32_t price = landed_property->purchase_price;
-        // Buy property if affordable and cash buffer maintained
-        if (player->cash - price >= 200) { 
+        // Buy property if affordable
+        if (player->cash >= price) { 
             action.type = ACTION_LANDED_PROPERTY;
             action.buying_property = true;
             return action;
@@ -222,7 +224,7 @@ Action auction(void* agent_ptr, const GameStateView* state, const AuctionView* a
 
     const PlayerView* player = &state->players[agent->agent_index];
     
-    // Auction startegy: bid up to 75% of calculated property value, keeping a cash buffer of 200
+    // Auction startegy: bid up to 90% of calculated property value
     float property_value = calculate_property_value(state, auction->property_id, agent->agent_index);
     const PropertyView* property = NULL;
     for (uint32_t i = 0; i < state->num_properties; ++i) {
@@ -237,13 +239,7 @@ Action auction(void* agent_ptr, const GameStateView* state, const AuctionView* a
         return action;
     }
     // Calculate max bid and cash limit
-    uint32_t max_bid = (uint32_t)((float)property->purchase_price * property_value * 0.75f);
-    uint32_t cash_limit = player->cash > 200 ? player->cash - 200 : 0;
-
-    if (max_bid > cash_limit) {
-        max_bid = cash_limit;
-    }
-
+    uint32_t max_bid = (uint32_t)((float)property->purchase_price * property_value * 0.90f);
     
     if (max_bid >= 10 && property_value >= 0.1f) {
         action.type = ACTION_AUCTION_BID;
@@ -265,9 +261,8 @@ Action trade_offer(void* agent_ptr, const GameStateView* state, const TradeOffer
         return action;
     }
 
-    // Accept if the trade is favorable (more cash received than given)
-    bool accept = (offer->offer_to.cash > offer->offer_from.cash);
-    action.trade_response = accept;
+    // Accept all trade offers (greedy strategy)
+    action.trade_response = true;
     return action;
 }
 
