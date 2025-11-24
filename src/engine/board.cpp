@@ -79,7 +79,8 @@ constexpr std::array<RailroadInfo,4> AllRailRoads = {{
 }};
 
 constexpr std::array<UtilityInfo,2> AllUtilities = {{
-  {0, 150}, {1, 150}
+  {0, 150, {4, 10}}, 
+  {1, 150, {4, 10}},
 }};
 
 constexpr std::array<int8_t,40> makeTilePropertyIndex() {
@@ -121,6 +122,7 @@ constexpr std::array<ColourGroup, 8> makeColourToTiles() {
         if (tile.type == TileType::Property) {
             auto c = static_cast<size_t>(tile.colour);
             ColourGroup& g = result[c];
+            g.colour = tile.colour;
             g.tiles[g.count++] = tile.index;
         }
     }

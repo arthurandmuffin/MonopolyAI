@@ -58,7 +58,8 @@ typedef struct {
 
 // Optional struct for auction
 typedef struct {
-    uint32_t property_id;
+    uint32_t property_position;
+    uint32_t current_bid;
 } AuctionView;
 
 // Total game state
