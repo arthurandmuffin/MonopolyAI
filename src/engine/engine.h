@@ -7,6 +7,7 @@
 #include "state_view.h"
 #include "agent_abi.h"
 #include "agent_adapter.h"
+#include "board.hpp"
 
 struct GameConfig {
   uint64_t game_id;
@@ -19,6 +20,7 @@ struct GameResult {
     uint64_t game_id;
     uint64_t turns;
     int winner; // -1 if draw/timeout
+    std::vector<double> penalties;
     GameStateView final_state;
     std::string log_path;
 };
@@ -40,15 +42,60 @@ public:
 private:
     GameConfig cfg_;
     std::mt19937_64 rng_;
+    const Board& board_;
     std::uniform_int_distribution<int> dice_;
     std::vector<AgentAdapter> agent_adapters_;
     GameStateView state_;
     std::vector<int> position_to_properties_;
     std::vector<PlayerView> players_;
+    std::vector<double> penalties_;
     std::vector<PropertyView> properties_;
 
+    std::vector<uint32_t> community_deck_;
+    std::vector<uint32_t> chance_deck_;
+
     void init_setup();
+
     RollResult dice_roll();
 
-    void auction(uint32_t property_id);
+    // engine_core.cpp
+    bool update_position(PlayerView& player, RollResult diceroll);
+    void handle_position(PlayerView& player);
+    bool handle_action(PlayerView& player, Action player_action);
+
+    void jail(PlayerView& player);
+    bool in_jail(PlayerView& player);
+    void use_jail_free_card(PlayerView& player);
+
+    void penalize(PlayerView& player);
+
+    // engine_rent.cpp
+    uint32_t get_rent(PlayerView& player, bool max_rent);
+    uint32_t get_street_rent(PlayerView& player, const PropertyInfo* street);
+    uint32_t get_railroad_rent(PlayerView& player, const int railroadIndex);
+    uint32_t get_utility_rent(PlayerView& player, const int utilityIndex, bool max_rent);
+    bool developed_monopoly(PropertyView* property);
+    bool is_monopoly(const PropertyInfo* street, bool active_monopoly);
+
+    // engine_finance.cpp
+    bool raise_fund(PlayerView& player, uint32_t owed);
+    void pay_by_mortgage(PlayerView& player, std::vector<PropertyView*> undeveloped_assets, uint32_t amount);
+    void pay_by_houses(PlayerView& player, std::vector<PropertyView*> developed_assets, uint32_t amount);
+    void mortgage(PlayerView& player, PropertyView* property);
+    void unmortgage(PlayerView& player, PropertyView* property);
+    void auction(PropertyView* property);
+    void bankrupt(PlayerView& player, PlayerView* debtor);
+
+    // engine_property.cpp
+    void buy_property(PlayerView& player, PropertyView* property);
+    void sell_house(PlayerView& player, PropertyView* property);
+    void build_house(PlayerView& player, PropertyView* property);
+
+    // engine_cards.cpp
+    void community_card_draw(PlayerView& player);
+    bool chance_card_draw(PlayerView& player);
+
+    // engine_trade.cpp
+    void trade(PlayerView& playerA, TradeDetail& playerA_assets, PlayerView& playerB, TradeDetail& playerB_assets);
+    bool legal_trade_detail(PlayerView& player, TradeDetail& assets);
 };

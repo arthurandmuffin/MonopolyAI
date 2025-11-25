@@ -13,7 +13,9 @@ typedef struct {
     bool in_jail;
     uint32_t turns_in_jail;
     uint32_t jail_free_cards;
+    uint32_t double_rolls;
 
+    // Not used in engine, for agent learning only
     uint8_t railroads_owned;
     uint8_t utilities_owned;
 } PlayerView;
@@ -23,7 +25,7 @@ typedef enum PropertyType { PROPERTY, UTILITY, RAILROAD }PropertyType;
 // State for each property
 typedef struct {
     uint32_t position;
-    uint32_t property_id;
+    uint32_t property_id; // dont feed this to neural net
     uint32_t owner_index;
     bool is_owned;
     bool mortgaged;
@@ -42,21 +44,22 @@ typedef struct {
 } PropertyView;
 
 typedef struct {
-    uint32_t* property_ids;
+    uint32_t* properties; // position
     uint8_t property_num;
     uint32_t cash;
     uint32_t jail_cards;
 } TradeDetail;
 
 typedef struct {
-    uint32_t prop_player_index;
-    TradeDetail offer_from;
-    TradeDetail offer_to;
+    uint32_t player_to_offer; // Index of player trying to trade w/, property.owner_index
+    TradeDetail offer_from; // things offered by trade proposer
+    TradeDetail offer_to; // things trade proposer wants
 } TradeOffer;
 
 // Optional struct for auction
 typedef struct {
     uint32_t property_id;
+    uint32_t current_bid;
 } AuctionView;
 
 // Total game state

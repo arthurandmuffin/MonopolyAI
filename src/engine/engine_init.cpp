@@ -1,9 +1,7 @@
 #include "engine.h"
 #include "board.hpp"
-#include <fstream>
-#include <cstdint>
 
-Engine::Engine(GameConfig config) : cfg_(std::move(config)), rng_(cfg_.seed), dice_(1, 6) {
+Engine::Engine(GameConfig config) : cfg_(std::move(config)), rng_(cfg_.seed), dice_(1, 6), board_(board()) {
     // Reserve space on agent_adapters_, mildly improves performance
     agent_adapters_.reserve(cfg_.agent_specs.size());
 
@@ -17,6 +15,7 @@ Engine::Engine(GameConfig config) : cfg_(std::move(config)), rng_(cfg_.seed), di
         // Apparently generates a random seed
         const uint64_t seed = cfg_.seed ^ (static_cast<uint64_t>(i) + 0x9e3779b97f4a7c15ULL);
         agent_adapters_[i].game_start(i, seed);
+        penalties_[i] = 0;
     }
 
     init_setup();
@@ -38,9 +37,11 @@ void Engine::init_setup() {
     state_.num_properties = NUM_PROPERTIES;
     state_.houses_remaining = 32;
     state_.hotels_remaining = 12;
-    
+    // To get player info with player_index i, its players_[i]
+    // Initialize player state
     players_.assign(player_count, {});
     for (uint32_t i = 0; i < player_count; i++) {
+        
         auto& player = players_[i];
         player.player_index = i;
         player.cash = STARTING_CASH;
@@ -50,12 +51,13 @@ void Engine::init_setup() {
         player.in_jail = false;
         player.turns_in_jail = 0;
         player.jail_free_cards = 0;
+        player.double_rolls = 0;
 
         player.railroads_owned = 0;
         player.utilities_owned = 0;
     }
 
-    auto& b = board();
+    auto& b = this->board_;
 
     properties_.assign(NUM_PROPERTIES, {});
     position_to_properties_.assign(NUM_TILES, -1);
@@ -63,12 +65,13 @@ void Engine::init_setup() {
     for (uint32_t i = 0; i < NUM_TILES; i++) {
         const TileType tile_type = b.tiles[i].type;
         switch (tile_type) {
-        case TileType::Property:
+        case TileType::Property: {
             const PropertyInfo* property = b.propertyByTile(i);
             auto& street = properties_[property_count];
             street.position = i;
             street.property_id = property->property_id;
-            street.owner_index = UINT32_MAX;
+            street.owner_index = -1;
+            street.is_owned = false;
             street.mortgaged = false;
 
             street.type = PropertyType::PROPERTY;
@@ -86,13 +89,15 @@ void Engine::init_setup() {
             position_to_properties_[i] = property_count;
             property_count++;
             break;
-        case TileType::Railroad:
+        }
+        case TileType::Railroad: {
             const int railroad_id = b.railroadByTile(i);
             const RailroadInfo* railroad = &b.railroads[railroad_id];
             auto& rail = properties_[property_count];
             rail.position = i;
             rail.property_id = railroad->railroad_id;
-            rail.owner_index = UINT32_MAX;
+            rail.owner_index = -1;
+            rail.is_owned = false;
             rail.mortgaged = false;
 
             rail.type = PropertyType::RAILROAD;
@@ -103,13 +108,15 @@ void Engine::init_setup() {
             position_to_properties_[i] = property_count;
             property_count++;
             break;
-        case TileType::Utility:
+        }
+        case TileType::Utility: {
             const int utility_id = b.utilityByTile(i);
             const UtilityInfo* utility = &b.utilities[utility_id];
             auto& util = properties_[property_count];
             util.position = i;
             util.property_id = utility->utility_id;
-            util.owner_index = UINT32_MAX;
+            util.owner_index = -1;
+            util.is_owned = false;
             util.mortgaged = false;
 
             util.type = PropertyType::UTILITY;
@@ -120,22 +127,19 @@ void Engine::init_setup() {
             position_to_properties_[i] = property_count;
             property_count++;
             break;
+        }
         default:
             break;
         }
     }
-}
+    this->state_.players = this->players_.data();
+    this->state_.properties = this->properties_.data();
 
-GameResult Engine::run() {
-    int turn = 0;
-    while (turn < cfg_.max_turns)
-    {
-        turn++;
-    }
-}
+    this->community_deck_.resize(16);
+    std::iota(this->community_deck_.begin(), this->community_deck_.end(), 0);
+    std::shuffle(this->community_deck_.begin(), this->community_deck_.end(), this->rng_);
 
-RollResult Engine::dice_roll() {
-    int roll1 = dice_(rng_);
-    int roll2 = dice_(rng_);
-    return {roll1, roll2, roll1 == roll2};
+    this->chance_deck_.resize(16);
+    std::iota(this->chance_deck_.begin(), this->chance_deck_.end(), 0);
+    std::shuffle(this->chance_deck_.begin(), this->chance_deck_.end(), this->rng_);
 }
