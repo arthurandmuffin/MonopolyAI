@@ -458,8 +458,9 @@ void Engine::auction(PropertyView* property) {
     property->is_owned = false;
     while (true) {
         int index = this->position_to_properties_[property->position];
+        assert(index >= 0);
         AuctionView auction = {
-            index,
+            static_cast<uint32_t>(index),
             0u
         };
         int highest_bidder = -1;

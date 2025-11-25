@@ -65,7 +65,7 @@ void Engine::init_setup() {
     for (uint32_t i = 0; i < NUM_TILES; i++) {
         const TileType tile_type = b.tiles[i].type;
         switch (tile_type) {
-        case TileType::Property:
+        case TileType::Property: {
             const PropertyInfo* property = b.propertyByTile(i);
             auto& street = properties_[property_count];
             street.position = i;
@@ -89,7 +89,8 @@ void Engine::init_setup() {
             position_to_properties_[i] = property_count;
             property_count++;
             break;
-        case TileType::Railroad:
+        }
+        case TileType::Railroad: {
             const int railroad_id = b.railroadByTile(i);
             const RailroadInfo* railroad = &b.railroads[railroad_id];
             auto& rail = properties_[property_count];
@@ -107,7 +108,8 @@ void Engine::init_setup() {
             position_to_properties_[i] = property_count;
             property_count++;
             break;
-        case TileType::Utility:
+        }
+        case TileType::Utility: {
             const int utility_id = b.utilityByTile(i);
             const UtilityInfo* utility = &b.utilities[utility_id];
             auto& util = properties_[property_count];
@@ -125,6 +127,7 @@ void Engine::init_setup() {
             position_to_properties_[i] = property_count;
             property_count++;
             break;
+        }
         default:
             break;
         }

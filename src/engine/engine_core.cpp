@@ -63,7 +63,7 @@ GameResult Engine::run() {
     
     GameResult result = {
         this->cfg_.game_id,
-        turn,
+        static_cast<uint64_t>(turn),
         winner,
         this->penalties_,
         this->state_,
@@ -74,7 +74,7 @@ GameResult Engine::run() {
 
 bool Engine::handle_action(PlayerView& player, Action player_action) {
     switch (player_action.type) {
-    case (ActionType::ACTION_LANDED_PROPERTY):
+    case (ActionType::ACTION_LANDED_PROPERTY): {
         int index = this->position_to_properties_[player.position];
         if (player_action.buying_property) {
             if (index == -1) {
@@ -93,7 +93,8 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
             }
         }
         break;
-    case (ActionType::ACTION_TRADE):
+    }
+    case (ActionType::ACTION_TRADE): {
         // TODO
         TradeOffer& offer = player_action.trade_offer;
         uint32_t player_index_to_offer = offer.player_to_offer;
@@ -122,11 +123,12 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         }
 
         break;
+    }
     case (ActionType::ACTION_TRADE_RESPONSE):
         // Should not be an action player sends on their own, must be prompted
         this->penalize(player);
         break;
-    case (ActionType::ACTION_MORTGAGE):
+    case (ActionType::ACTION_MORTGAGE): {
         uint32_t position = player_action.property_position;
         int index = this->position_to_properties_[position];
         if (index == -1) {
@@ -143,7 +145,8 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
 
         this->mortgage(player, property);
         break;
-    case (ActionType::ACTION_UNMORTGAGE):
+    }
+    case (ActionType::ACTION_UNMORTGAGE): {
         uint32_t position = player_action.property_position;
         int index = this->position_to_properties_[position];
         if (index == -1) {
@@ -165,7 +168,8 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
 
         this->unmortgage(player, property);
         break;
-    case (ActionType::ACTION_DEVELOP):
+    }
+    case (ActionType::ACTION_DEVELOP): {
         uint32_t position = player_action.property_position;
         int index = this->position_to_properties_[position];
         if (index == -1) {
@@ -196,7 +200,8 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
 
         this->build_house(player, property);
         break;
-    case (ActionType::ACTION_UNDEVELOP):
+    }
+    case (ActionType::ACTION_UNDEVELOP): {
         uint32_t position = player_action.property_position;
         int index = this->position_to_properties_[position];
         if (index == -1) {
@@ -213,13 +218,14 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
 
         this->sell_house(player, property);
         break;
+    }
     case (ActionType::ACTION_AUCTION_BID):
         // Should not be an action player sends on their own, must be prompted
         this->penalize(player);
         break;
     case (ActionType::ACTION_END_TURN):
         return true;
-    case (ActionType::ACTION_PAY_JAIL_FINE):
+    case (ActionType::ACTION_PAY_JAIL_FINE): {
         if (!this->in_jail(player)) {
             this->penalize(player);
             break;
@@ -239,7 +245,8 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         }
         this->handle_position(player);
         break;
-    case (ActionType::ACTION_USE_JAIL_CARD):
+    }
+    case (ActionType::ACTION_USE_JAIL_CARD): {
         if (!this->in_jail(player)) {
             this->penalize(player);
             break;
@@ -261,7 +268,8 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
             return true;
         }
         break;
-    case (ActionType::ACTION_JAIL_ROLL_DOUBLE):
+    }
+    case (ActionType::ACTION_JAIL_ROLL_DOUBLE): {
         if (!this->in_jail(player)) {
             this->penalize(player);
             break;
@@ -280,6 +288,8 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         }
         break;
     }
+    }
+    return false;
 }
 
 bool Engine::update_position(PlayerView& player, RollResult diceroll) {
@@ -318,6 +328,8 @@ void Engine::handle_position(PlayerView& player) {
         if (player.retired) {
             return;
         }
+    default:
+        break;
     }
 
     uint32_t rent = 0;
@@ -326,17 +338,21 @@ void Engine::handle_position(PlayerView& player) {
     switch (this->board_.tiles[player.position].type) {
     case (TileType::Property):
     case (TileType::Railroad):
-    case (TileType::Utility):
+    case (TileType::Utility): {
         int index = this->position_to_properties_[player.position];
         PropertyView& property = this->properties_[index];
         debtor = &this->players_[property.owner_index];
         rent = get_rent(player, max_rent);
         break;
-    case (TileType::Tax):
+    }
+    case (TileType::Tax): {
         cost = 200; //config, implement 10% in future
         break;
+    }
     case (TileType::GoToJail):
         this->jail(player);
+        break;
+    default:
         break;
     }
 

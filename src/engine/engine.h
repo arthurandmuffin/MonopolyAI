@@ -7,6 +7,7 @@
 #include "state_view.h"
 #include "agent_abi.h"
 #include "agent_adapter.h"
+#include "board.hpp"
 
 struct GameConfig {
   uint64_t game_id;

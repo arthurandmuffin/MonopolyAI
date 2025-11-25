@@ -19,6 +19,7 @@ uint32_t Engine::get_rent(PlayerView& player, bool max_rent) {
     } else if (utilityIndex != -1) {
         return Engine::get_utility_rent(player, utilityIndex, max_rent);
     }
+    return 0;
 }
 
 uint32_t Engine::get_street_rent(PlayerView& player, const PropertyInfo* street) {
