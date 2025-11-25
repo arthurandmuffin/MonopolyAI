@@ -18,7 +18,7 @@ void Engine::community_card_draw(PlayerView& player) {
         // Bank error in your favor. Collect $200.
         player.cash += 200;
         break;
-    case 2:
+    case 2: {
         // Doctor's fee. Pay $50.
         bool payable = this->raise_fund(player, 50);
         if (!payable) {
@@ -28,6 +28,7 @@ void Engine::community_card_draw(PlayerView& player) {
             player.cash -= 50;
         }
         break;
+    }
     case 3:
         // From sale of stock you get $50
         player.cash += 50;
@@ -40,7 +41,7 @@ void Engine::community_card_draw(PlayerView& player) {
         // Go to jail
         this->jail(player);
         break;
-    case 6:
+    case 6: {
         // Grand Opera Night, colelct $50 from each player
         for (auto& other_player : this->players_) {
             if (player.player_index == other_player.player_index || other_player.retired) {
@@ -56,6 +57,7 @@ void Engine::community_card_draw(PlayerView& player) {
             }
         }
         break;
+    }
     case 7:
         // Holiday Christmas Fund matures, collect $100
         player.cash += 100;
@@ -64,7 +66,7 @@ void Engine::community_card_draw(PlayerView& player) {
         // Income tax refund, collect $20
         player.cash += 20;
         break;
-    case 9:
+    case 9: {
         // Birthday, collect $10 from each player
         for (auto& other_player : this->players_) {
             if (player.player_index == other_player.player_index || other_player.retired) {
@@ -80,11 +82,12 @@ void Engine::community_card_draw(PlayerView& player) {
             }
         }
         break;
+    }
     case 10:
         // Life insurance matures, collect $100
         player.cash += 100;
         break;
-    case 11:
+    case 11: {
         // Hospital fees, pay $50
         bool payable = this->raise_fund(player, 50);
         if (!payable) {
@@ -94,7 +97,8 @@ void Engine::community_card_draw(PlayerView& player) {
             player.cash -= 50;
         }
         break;
-    case 12:
+    }
+    case 12: {
         // School fees, pay $50
         bool payable = this->raise_fund(player, 50);
         if (!payable) {
@@ -104,11 +108,12 @@ void Engine::community_card_draw(PlayerView& player) {
             player.cash -= 50;
         }
         break;
+    }
     case 13:
         // Receive consultancy fee of $25
         player.cash += 25;
         break;
-    case 14:
+    case 14: {
         // Street repairs, pay $40 per house and $115 per hotel
         uint32_t repair_cost = 0;
         for (auto& property : this->properties_) {
@@ -130,6 +135,7 @@ void Engine::community_card_draw(PlayerView& player) {
             player.cash -= repair_cost;
         }
         break;
+    }
     case 15:
         // 2nd place in beauty contest, colelct $10
         player.cash += 10;
@@ -165,7 +171,7 @@ bool Engine::chance_card_draw(PlayerView& player) {
         }
         player.position = 11;
     case 4:
-    case 5:
+    case 5: {
         // Advance to the nearest Railroad, double rent if owned already.
         int min_distance = UINT_MAX;
         int8_t closest_railroad = -1;
@@ -181,7 +187,8 @@ bool Engine::chance_card_draw(PlayerView& player) {
         player.position = closest_railroad;
         this->chance_deck_.push_back(drawn_card);
         return true;
-    case 6:
+    }
+    case 6: {
         // Advance token to nearest Utility, 10x roll.
         int min_distance = UINT_MAX;
         int8_t closest_utility = -1;
@@ -197,6 +204,7 @@ bool Engine::chance_card_draw(PlayerView& player) {
         player.position = closest_utility;
         this->chance_deck_.push_back(drawn_card);
         return true;
+    }
     case 7:
         // Bank pays you dividend of $50
         player.cash += 50;
@@ -214,7 +222,7 @@ bool Engine::chance_card_draw(PlayerView& player) {
         // Go to jail
         this->jail(player);
         break;
-    case 11:
+    case 11: {
         // Street repairs, pay $20 per house and $100 per hotel
         uint32_t repair_cost = 0;
         for (auto& property : this->properties_) {
@@ -236,7 +244,8 @@ bool Engine::chance_card_draw(PlayerView& player) {
             player.cash -= repair_cost;
         }
         break;
-    case 12:
+    }
+    case 12: {
         // Speeding fine $15
         bool payable = this->raise_fund(player, 15);
         if (!payable) {
@@ -246,13 +255,14 @@ bool Engine::chance_card_draw(PlayerView& player) {
             player.cash -= 15;
         }
         break;
+    }
     case 13:
         // Take a trip to Reading Railroad. If you pass Go, collect $200.
         if (player.position > 5) {
             player.cash += 200;
         }
         player.position = 5;
-    case 14:
+    case 14: {
         // You have been elected Chairman of the Board. Pay each player $50.
         for (auto& other_player : this->players_) {
             if (player.player_index == other_player.player_index || other_player.retired) {
@@ -268,6 +278,7 @@ bool Engine::chance_card_draw(PlayerView& player) {
             }
         }
         break;
+    }
     case 15:
         // Your building loan matures. Collect $150
         player.cash += 150;
