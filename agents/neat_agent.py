@@ -437,9 +437,7 @@ class NEATAgent:
         
         # Handle jail
         if agent_player['in_jail']:
-            base_features = self.extract_features(state)
-            jail_features = self.extract_jail_features(state)
-            features = np.concatenate([base_features, jail_features])
+            features = np.concatenate([self.extract_features(state), self.extract_jail_features(state)])
             output = self.net.activate(features)
             
             # Outputs [3-5] for jail decisions
