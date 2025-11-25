@@ -79,7 +79,8 @@ constexpr std::array<RailroadInfo,4> AllRailRoads = {{
 }};
 
 constexpr std::array<UtilityInfo,2> AllUtilities = {{
-  {0, 150}, {1, 150}
+  {0, 150, {4, 10}}, 
+  {1, 150, {4, 10}},
 }};
 
 constexpr std::array<int8_t,40> makeTilePropertyIndex() {
@@ -108,11 +109,24 @@ constexpr std::array<int8_t,40> makeTileUtilityIndex() {
     std::array<int8_t,40> tile_utility_index{};
     tile_utility_index.fill(-1);
     for (const auto& tile : AllTiles) {
-        if (tile.type == TileType::Railroad) {
+        if (tile.type == TileType::Utility) {
             tile_utility_index[tile.index] = static_cast<int8_t>(tile.auxilary_id);
         }
     }
     return tile_utility_index;
+}
+
+constexpr std::array<ColourGroup, 8> makeColourToTiles() {
+    std::array<ColourGroup, 8> result{};
+    for (const auto& tile : AllTiles) {
+        if (tile.type == TileType::Property) {
+            auto c = static_cast<size_t>(tile.colour);
+            ColourGroup& g = result[c];
+            g.colour = tile.colour;
+            g.tiles[g.count++] = tile.index;
+        }
+    }
+    return result;
 }
 
 struct BoardHolder {
@@ -126,6 +140,8 @@ struct BoardHolder {
         board.tile_property_index = makeTilePropertyIndex();
         board.tile_railroad_index = makeTileRailroadIndex();
         board.tile_utility_index = makeTileUtilityIndex();
+
+        board.colour_to_tiles = makeColourToTiles();
     }
 };
 

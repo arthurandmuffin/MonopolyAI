@@ -22,10 +22,14 @@ typedef enum {
     ACTION_TRADE,
     ACTION_TRADE_RESPONSE,
     ACTION_MORTGAGE,
+    ACTION_UNMORTGAGE,
+    ACTION_DEVELOP,
+    ACTION_UNDEVELOP,
     ACTION_AUCTION_BID,
     ACTION_END_TURN,
     ACTION_PAY_JAIL_FINE,
-    ACTION_USE_JAIL_CARD
+    ACTION_USE_JAIL_CARD,
+    ACTION_JAIL_ROLL_DOUBLE
 } ActionType;
 
 typedef struct {
@@ -34,7 +38,7 @@ typedef struct {
         bool buying_property;
         TradeOffer trade_offer;
         bool trade_response;
-        uint32_t mortgage_property;
+        uint32_t property_position; // position of property to build/unbuild houses and mortgage
         uint32_t auction_bid;
     };
 } Action;
