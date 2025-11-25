@@ -6,7 +6,11 @@ import json
 import subprocess
 import argparse
 import multiprocessing as mp
+import _socket
 from typing import Dict, List, Tuple
+import os
+os.environ['PYTHONHOME'] = r'C:\Users\xiayi\AppData\Local\Programs\Python\Python311'
+os.environ['PYTHONPATH'] = r'C:\Users\xiayi\AppData\Local\Programs\Python\Python311\DLLs'
 
 ENGINE_PATH = "./build/Release/monopoly_engine.exe"
 NEAT_AGENT_PATH = "./build/agents/Release/neat_bridge.dll"
@@ -47,7 +51,7 @@ class NeatTraining:
         # agent specs
         agents = [{
             'path': NEAT_AGENT_PATH,
-            'config': json.dumps(neat_config),
+            'config': neat_config,
             'name': 'NEATAgent'
         }]
 
@@ -56,14 +60,14 @@ class NeatTraining:
             for i, opponent_path in enumerate(NAIVE_OPPONENT_AGENTS[:self.num_opponents]):
                 agents.append({
                     'path': opponent_path,
-                    'config_json': {},
+                    'config': {},
                     'name': f'Opponent{i+1}'
                 })
         else:
             for i, opponent_path in enumerate(OPPONENT_AGENTS[:self.num_opponents]):
                 agents.append({
                     'path': opponent_path,
-                    'config_json': {},
+                    'config': json.dumps({}),
                     'name': f'Opponent{i+1}'
                 })
         
@@ -78,31 +82,8 @@ class NeatTraining:
     
     def run_game(self, genome_path: str, game_id: int, test: bool = False) -> Tuple[int, Dict]:
         # Prepare agent configs
-        agents = []
-        neat_config = {
-            'genome_path': genome_path,
-            'config_path': self.config_path
-        }
-        agents.append({
-            'path': NEAT_AGENT_PATH,
-            'config': neat_config,
-            'name': 'NEATAgent'
-        })
-
-        if test:
-            for i, opponent_path in enumerate(NAIVE_OPPONENT_AGENTS[:self.num_opponents]):
-                agents.append({
-                    'path': opponent_path,
-                    'config': {},
-                    'name': f'Opponent{i+1}'
-                })
-        else:
-            for i, opponent_path in enumerate(OPPONENT_AGENTS[:self.num_opponents]):
-                agents.append({
-                    'path': opponent_path,
-                    'config': {},
-                    'name': f'Opponent{i+1}'
-                })
+        config = self.create_game_config(genome_path, game_id, test)
+        agents = config['agents']
 
         # Write each agent's config to a temp file
         temp_files = []

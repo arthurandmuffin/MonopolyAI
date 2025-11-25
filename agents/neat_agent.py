@@ -447,11 +447,11 @@ class NEATAgent:
             
             # Choose best option
             if agent_player['jail_free_cards'] > 0 and use_card_score > pay_fine_score and use_card_score > roll_doubles_score:
-                return {'action_type': 9}  # ACTION_USE_JAIL_CARD
+                return {'action_type': 10}  # ACTION_USE_JAIL_CARD
             elif agent_player['cash'] >= 50 and pay_fine_score > roll_doubles_score:
-                return {'action_type': 8}  # ACTION_PAY_JAIL_FINE
+                return {'action_type': 9}  # ACTION_PAY_JAIL_FINE
             else:
-                return {'action_type': 10}  # ACTION_JAIL_ROLL_DOUBLE
+                return {'action_type': 11}  # ACTION_JAIL_ROLL_DOUBLE
             
         # Check if on unowned property
         property_at_position = None
@@ -497,7 +497,7 @@ class NEATAgent:
                 if trade_offer:
                     return trade_offer
         
-        return {'action_type': 7 } # ACTION_END_TURN
+        return {'action_type': 8 } # ACTION_END_TURN
     
     def auction(self, state: Dict, auction: Dict) -> Dict:
         # if no neural network, use heuristic
@@ -515,7 +515,7 @@ class NEATAgent:
                 break
         
         if not prop:
-            return {'action_type': 7}  # END_TURN (no bid)
+            return {'action_type': 8}  # END_TURN (no bid)
         
         features = np.concatenate([self.extract_features(state), self.extract_property_features(state, property_id)])
         output = self.net.activate(features)
@@ -528,11 +528,11 @@ class NEATAgent:
 
         if bid >= 10 and bid_multiplier > 0.3:
             return {
-                'action_type': 6,  # ACTION_AUCTION_BID
+                'action_type': 7,  # ACTION_AUCTION_BID
                 'auction_bid': bid
             }
 
-        return {'action_type': 7} # ACTION_END_TURN
+        return {'action_type': 8} # ACTION_END_TURN
     
     def trade_offer(self, state: Dict, offer: Dict) -> Dict:
         # Respond to trade offer
@@ -559,10 +559,10 @@ class NEATAgent:
         
         if agent_player['in_jail']:
             if agent_player['jail_free_cards'] > 0:
-                return {'action_type': 9}
+                return {'action_type': 10}
             elif agent_player['cash'] >= 50:
-                return {'action_type': 8}
-            return {'action_type': 10}
+                return {'action_type': 9}
+            return {'action_type': 11}
         
         for prop in state['properties']:
             if prop['position'] == agent_player['position'] and not prop['is_owned']:
@@ -570,7 +570,7 @@ class NEATAgent:
                     return {'action_type': 0, 'buying_property': True}
                 return {'action_type': 0, 'buying_property': False}
         
-        return {'action_type': 7}
+        return {'action_type': 8}
     
     def heuristic_auction(self, state: Dict, auction: Dict) -> Dict:
         # Fallback heuristic for auction
@@ -579,9 +579,9 @@ class NEATAgent:
         for prop in state['properties']:
             if prop['property_id'] == auction['property_id']:
                 if agent_player['cash'] > prop['purchase_price']:
-                    return {'action_type': 6, 'auction_bid': prop['purchase_price'] // 2}
+                    return {'action_type': 7, 'auction_bid': prop['purchase_price'] // 2}
         
-        return {'action_type': 7}
+        return {'action_type': 8}
     
     def heuristic_trade_offer(self, state: Dict, offer: Dict) -> Dict:
         # Fallback heuristic for trade offer
