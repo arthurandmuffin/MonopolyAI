@@ -1,6 +1,7 @@
 #include "engine.h"
 #include "board.hpp"
 #include <cassert>
+#include <iostream>
 
 void Engine::buy_property(PlayerView& player, PropertyView* property) {
     assert(property->owner_index == -1);
@@ -10,6 +11,12 @@ void Engine::buy_property(PlayerView& player, PropertyView* property) {
     } else {
         player.cash -= property->purchase_price;
         property->owner_index = player.player_index;
+        property->is_owned = true;
+        if (property->type == PropertyType::RAILROAD) {
+            player.railroads_owned++;
+        } else if (property->type == PropertyType::UTILITY) {
+            player.utilities_owned++;
+        }
     }
 }
 

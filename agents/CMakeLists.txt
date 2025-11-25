@@ -1,3 +1,6 @@
+set(Python3_EXECUTABLE "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11")
+set(Python3_ROOT_DIR "/Library/Frameworks/Python.framework/Versions/3.11")
+
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
 add_library(greedy_agent SHARED greedy_agent.c)

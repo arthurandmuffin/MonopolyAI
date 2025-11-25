@@ -83,6 +83,53 @@ constexpr std::array<UtilityInfo,2> AllUtilities = {{
   {1, 150, {4, 10}},
 }};
 
+constexpr std::array<int8_t, 4> RailroadPositions = {5, 15, 25, 35};
+
+constexpr std::array<int8_t, 2> UtilityPositions = {12, 28};
+
+constexpr std::array<double, 40> TileProbabilities = {
+    3.0961,  // Go
+    2.1314,  // Mediterranean Avenue
+    1.8849,  // Community Chest
+    2.1624,  // Baltic Avenue
+    2.3285,  // Income Tax
+    2.9631,  // Reading Railroad
+    2.2621,  // Oriental Avenue
+    0.8650,  // Chance
+    2.3210,  // Vermont Avenue
+    2.3003,  // Connecticut Avenue
+    6.2194,  // Visiting Jail
+    2.7017,  // St. Charles Place
+    2.6040,  // Electric Company
+    2.3721,  // States Avenue
+    2.4649,  // Virginia Avenue
+    2.9200,  // Pennsylvania Railroad
+    2.7924,  // St. James Place
+    2.5945,  // Community Chest
+    2.9356,  // Tennessee Avenue
+    3.0852,  // New York Avenue
+    2.8836,  // Free Parking
+    2.8358,  // Kentucky Avenue
+    1.0480,  // Chance
+    2.7357,  // Indiana Avenue
+    3.1858,  // Illinois Avenue
+    3.0659,  // B & O Railroad
+    2.7072,  // Atlantic Avenue
+    2.6789,  // Ventnor Avenue
+    2.8074,  // Water Works
+    2.5861,  // Marvin Gardens
+    0.0000,  // Go To Jail
+    2.6774,  // Pacific Avenue
+    2.6252,  // North Carolina Avenue
+    2.3661,  // Community Chest
+    2.5006,  // Pennsylvania Avenue
+    2.4326,  // Short Line
+    0.8669,  // Chance
+    2.1864,  // Park Place
+    2.1799,  // Luxury Tax
+    2.6260,  // Boardwalk
+};
+
 constexpr std::array<int8_t,40> makeTilePropertyIndex() {
     std::array<int8_t,40> tile_property_index{};
     tile_property_index.fill(-1);
@@ -136,6 +183,10 @@ struct BoardHolder {
         board.properties = AllProperties;
         board.railroads = AllRailRoads;
         board.utilities = AllUtilities;
+
+        board.railroad_positions = RailroadPositions;
+        board.utility_positions = UtilityPositions;
+        board.tile_probability = TileProbabilities;
 
         board.tile_property_index = makeTilePropertyIndex();
         board.tile_railroad_index = makeTileRailroadIndex();

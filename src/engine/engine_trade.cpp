@@ -14,6 +14,13 @@ void Engine::trade(PlayerView& playerA, TradeDetail& playerA_assets, PlayerView&
         int index = this->position_to_properties_[position];
         PropertyView& asset = this->properties_[index];
         asset.owner_index = playerB.player_index;
+        if (asset.type == PropertyType::RAILROAD) {
+            playerB.railroads_owned++;
+            playerA.railroads_owned--;
+        } else if (asset.type == PropertyType::UTILITY) {
+            playerB.utilities_owned++;
+            playerA.utilities_owned--;
+        }
     }
 
     // playerB_assets -> player A
@@ -29,6 +36,13 @@ void Engine::trade(PlayerView& playerA, TradeDetail& playerA_assets, PlayerView&
         int index = this->position_to_properties_[position];
         PropertyView& asset = this->properties_[index];
         asset.owner_index = playerA.player_index;
+        if (asset.type == PropertyType::RAILROAD) {
+            playerA.railroads_owned++;
+            playerB.railroads_owned--;
+        } else if (asset.type == PropertyType::UTILITY) {
+            playerA.utilities_owned++;
+            playerB.utilities_owned--;
+        }
     }
 }
 

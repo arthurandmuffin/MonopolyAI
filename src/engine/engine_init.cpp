@@ -16,6 +16,7 @@ Engine::Engine(GameConfig config) : cfg_(std::move(config)), rng_(cfg_.seed), di
         agent_adapters_.emplace_back(spec);
     }
 
+    penalties_.assign(cfg_.agent_specs.size(), 0);
     std::cerr << "Notify agent of game start\n";
     for (size_t i = 0; i < agent_adapters_.size(); i++) {
         // Apparently generates a random seed

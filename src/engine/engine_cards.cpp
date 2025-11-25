@@ -1,6 +1,7 @@
 #include "engine.h"
 #include "board.hpp"
 #include <cassert>
+#include <iostream>
 
 void Engine::community_card_draw(PlayerView& player) {
     uint32_t drawn_card = this->community_deck_[0];
@@ -146,7 +147,7 @@ void Engine::community_card_draw(PlayerView& player) {
 
 bool Engine::chance_card_draw(PlayerView& player) {
     uint32_t drawn_card = this->chance_deck_[0];
-    this->community_deck_.erase(this->chance_deck_.begin());
+    this->chance_deck_.erase(this->chance_deck_.begin());
     assert(drawn_card < 16);
     switch (drawn_card)
     {
@@ -173,7 +174,7 @@ bool Engine::chance_card_draw(PlayerView& player) {
     case 4:
     case 5: {
         // Advance to the nearest Railroad, double rent if owned already.
-        int min_distance = UINT_MAX;
+        int min_distance = std::numeric_limits<int>::max();
         int8_t closest_railroad = -1;
         for (auto position : this->board_.railroad_positions) {
             int distance = int(player.position) - int(position);
@@ -190,7 +191,7 @@ bool Engine::chance_card_draw(PlayerView& player) {
     }
     case 6: {
         // Advance token to nearest Utility, 10x roll.
-        int min_distance = UINT_MAX;
+        int min_distance = std::numeric_limits<int>::max();
         int8_t closest_utility = -1;
         for (auto position : this->board_.utility_positions) {
             int distance = int(player.position) - int(position);
@@ -284,6 +285,6 @@ bool Engine::chance_card_draw(PlayerView& player) {
         player.cash += 150;
         break;
     }
-    this->community_deck_.push_back(drawn_card);
+    this->chance_deck_.push_back(drawn_card);
     return false;
 }
