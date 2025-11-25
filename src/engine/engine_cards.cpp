@@ -75,8 +75,8 @@ void Engine::community_card_draw(PlayerView& player) {
                 this->bankrupt(other_player, &player);
             } else {
                 assert(other_player.cash >= 10);
-                other_player.cash -= 50;
-                player.cash += 50;
+                other_player.cash -= 10;
+                player.cash += 10;
             }
         }
         break;
@@ -138,6 +138,141 @@ void Engine::community_card_draw(PlayerView& player) {
     this->community_deck_.push_back(drawn_card);
 }
 
-void Engine::chance_card_draw(PlayerView& player) {
-    return;
+bool Engine::chance_card_draw(PlayerView& player) {
+    uint32_t drawn_card = this->chance_deck_[0];
+    this->community_deck_.erase(this->chance_deck_.begin());
+    assert(drawn_card < 16);
+    switch (drawn_card)
+    {
+    case 0:
+        // Advance to Boardwalk.
+        player.position = 39;
+    case 1:
+        // Advance to Go & collect $200.
+        player.position = 0;
+        player.cash += 200;
+        break;
+    case 2:
+        // Advance to Illinois Avenue, collect $200 if pass Go
+        if (player.position > 24) {
+            player.cash += 200;
+        }
+        player.position = 24;
+    case 3:
+        // Advance to St. Charles Place, collect $200 if pass Go
+        if (player.position > 11) {
+            player.cash += 200;
+        }
+        player.position = 11;
+    case 4:
+    case 5:
+        // Advance to the nearest Railroad, double rent if owned already.
+        int min_distance = UINT_MAX;
+        int8_t closest_railroad = -1;
+        for (auto position : this->board_.railroad_positions) {
+            int distance = int(player.position) - int(position);
+            int abs_distance = std::abs(distance);
+            if (abs_distance <= min_distance) {
+                min_distance = abs_distance;
+                closest_railroad = position;
+            }
+        }
+        assert(closest_railroad > 0);
+        player.position = closest_railroad;
+        this->chance_deck_.push_back(drawn_card);
+        return true;
+    case 6:
+        // Advance token to nearest Utility, 10x roll.
+        int min_distance = UINT_MAX;
+        int8_t closest_utility = -1;
+        for (auto position : this->board_.utility_positions) {
+            int distance = int(player.position) - int(position);
+            int abs_distance = std::abs(distance);
+            if (abs_distance <= min_distance) {
+                min_distance = abs_distance;
+                closest_utility = position;
+            }
+        }
+        assert(closest_utility > 0);
+        player.position = closest_utility;
+        this->chance_deck_.push_back(drawn_card);
+        return true;
+    case 7:
+        // Bank pays you dividend of $50
+        player.cash += 50;
+        break;
+    case 8:
+        // Get out of jail free card
+        player.jail_free_cards += 1;
+        return false;
+    case 9:
+        // Go Back 3 Spaces
+        player.position -= 3;
+        assert(player.position >= 0);
+        break;
+    case 10:
+        // Go to jail
+        this->jail(player);
+        break;
+    case 11:
+        // Street repairs, pay $20 per house and $100 per hotel
+        uint32_t repair_cost = 0;
+        for (auto& property : this->properties_) {
+            if (property.owner_index != player.player_index || property.type != PropertyType::PROPERTY) {
+                continue;
+            }
+            if (property.hotel) {
+                repair_cost += 100;
+            } else {
+                repair_cost += 25 * property.houses;
+            }
+        }
+
+        bool payable = this->raise_fund(player, repair_cost);
+        if (!payable) {
+            this->bankrupt(player, nullptr);
+        } else {
+            assert(player.cash >= repair_cost);
+            player.cash -= repair_cost;
+        }
+        break;
+    case 12:
+        // Speeding fine $15
+        bool payable = this->raise_fund(player, 15);
+        if (!payable) {
+            this->bankrupt(player, nullptr);
+        } else {
+            assert(player.cash >= 15);
+            player.cash -= 15;
+        }
+        break;
+    case 13:
+        // Take a trip to Reading Railroad. If you pass Go, collect $200.
+        if (player.position > 5) {
+            player.cash += 200;
+        }
+        player.position = 5;
+    case 14:
+        // You have been elected Chairman of the Board. Pay each player $50.
+        for (auto& other_player : this->players_) {
+            if (player.player_index == other_player.player_index || other_player.retired) {
+                continue;
+            }
+            bool payable = this->raise_fund(player, 50);
+            if (!payable) {
+                this->bankrupt(player, &other_player);
+            } else {
+                assert(player.cash >= 50);
+                player.cash -= 50;
+                other_player.cash += 50;
+            }
+        }
+        break;
+    case 15:
+        // Your building loan matures. Collect $150
+        player.cash += 150;
+        break;
+    }
+    this->community_deck_.push_back(drawn_card);
+    return false;
 }

@@ -8,8 +8,25 @@
 
 GameResult Engine::run() {
     int turn = 0;
+    int winner = -1;
     while (turn < cfg_.max_turns)
     {
+        assert(players_.size() == agent_adapters_.size());
+        int active_players = 0;
+        int active_index = -1;
+        for (size_t i = 0; i < this->players_.size(); i++) {
+            PlayerView& player = this->players_[i];
+            if (!player.retired) {
+                active_index = i;
+                active_players++;
+            }
+        }
+
+        if (active_players <= 1) {
+            winner = active_index;
+            break;
+        }
+
         for (auto it = this->players_.begin(); it != this->players_.end(); it++) {
             auto& player = *it;
             if (player.retired) {
@@ -43,6 +60,16 @@ GameResult Engine::run() {
         }
         turn++;
     }
+    
+    GameResult result = {
+        this->cfg_.game_id,
+        turn,
+        winner,
+        this->penalties_,
+        this->state_,
+    };
+
+    return result;
 }
 
 bool Engine::handle_action(PlayerView& player, Action player_action) {
@@ -279,9 +306,10 @@ bool Engine::update_position(PlayerView& player, RollResult diceroll) {
 }
 
 void Engine::handle_position(PlayerView& player) {
+    bool max_rent = false;
     switch (this->board_.tiles[player.position].type) {
     case (TileType::Chance):
-        this->chance_card_draw(player);
+        max_rent = this->chance_card_draw(player);
         if (player.retired) {
             return;
         }
@@ -302,7 +330,7 @@ void Engine::handle_position(PlayerView& player) {
         int index = this->position_to_properties_[player.position];
         PropertyView& property = this->properties_[index];
         debtor = &this->players_[property.owner_index];
-        rent = get_rent(player);
+        rent = get_rent(player, max_rent);
         break;
     case (TileType::Tax):
         cost = 200; //config, implement 10% in future

@@ -69,10 +69,10 @@ private:
     void penalize(PlayerView& player);
 
     // engine_rent.cpp
-    uint32_t get_rent(PlayerView& player);
+    uint32_t get_rent(PlayerView& player, bool max_rent);
     uint32_t get_street_rent(PlayerView& player, const PropertyInfo* street);
     uint32_t get_railroad_rent(PlayerView& player, const int railroadIndex);
-    uint32_t get_utility_rent(PlayerView& player, const int utilityIndex);
+    uint32_t get_utility_rent(PlayerView& player, const int utilityIndex, bool max_rent);
     bool developed_monopoly(PropertyView* property);
     bool is_monopoly(const PropertyInfo* street, bool active_monopoly);
 
@@ -92,7 +92,7 @@ private:
 
     // engine_cards.cpp
     void community_card_draw(PlayerView& player);
-    void chance_card_draw(PlayerView& player);
+    bool chance_card_draw(PlayerView& player);
 
     // engine_trade.cpp
     void trade(PlayerView& playerA, TradeDetail& playerA_assets, PlayerView& playerB, TradeDetail& playerB_assets);

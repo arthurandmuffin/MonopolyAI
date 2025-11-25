@@ -2,7 +2,7 @@
 #include "board.hpp"
 #include <cassert>
 
-uint32_t Engine::get_rent(PlayerView& player) {
+uint32_t Engine::get_rent(PlayerView& player, bool max_rent) {
     // Get rent using board, assume houses are legal
     // implement functions get_street_rent, get_railroad_rent, get_utility_rent
     const PropertyInfo* street = this->board_.propertyByTile(player.position);
@@ -11,9 +11,13 @@ uint32_t Engine::get_rent(PlayerView& player) {
     if (street) {
         return Engine::get_street_rent(player, street);
     } else if (railroadIndex != -1) {
-        return Engine::get_railroad_rent(player, railroadIndex);
+        uint32_t rent = Engine::get_railroad_rent(player, railroadIndex);
+        if (max_rent) {
+            return 2 * rent;
+        }
+        return rent;
     } else if (utilityIndex != -1) {
-        return Engine::get_utility_rent(player, utilityIndex);
+        return Engine::get_utility_rent(player, utilityIndex, max_rent);
     }
 }
 
@@ -53,7 +57,7 @@ uint32_t Engine::get_railroad_rent(PlayerView& player, const int railroadIndex) 
     return railroad.current_rent;
 }
 
-uint32_t Engine::get_utility_rent(PlayerView& player, const int utilityIndex) {
+uint32_t Engine::get_utility_rent(PlayerView& player, const int utilityIndex, bool max_rent) {
     int index = this->position_to_properties_[player.position];
     PropertyView& utility = this->properties_[index];
     assert(utility.type == PropertyType::UTILITY);
@@ -65,7 +69,7 @@ uint32_t Engine::get_utility_rent(PlayerView& player, const int utilityIndex) {
     RollResult roll = this->dice_roll();
     PlayerView& utility_owner = players_[utility.owner_index];
     assert(utility_owner.utilities_owned <= 2);
-    if (utility_owner.utilities_owned == 1) {
+    if (utility_owner.utilities_owned == 1 && !max_rent) {
         return 4 * (roll.roll_1 + roll.roll_2);
     } else {
         return 10 * (roll.roll_1 + roll.roll_2);
