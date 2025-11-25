@@ -58,6 +58,14 @@ GameResult Engine::run() {
                     break;
                 }
             }
+            
+
+            int index = this->position_to_properties_[player.position];
+            if (index != -1) {
+                PropertyView& property_on = this->properties_[index];
+                property_on.auctioned_this_turn = false;
+            }
+            player.jail_rolled_this_turn = false;
         }
         turn++;
     }
@@ -104,7 +112,6 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         break;
     }
     case (ActionType::ACTION_TRADE): {
-        // TODO
         TradeOffer& offer = player_action.trade_offer;
         uint32_t player_index_to_offer = offer.player_to_offer;
         PlayerView& player_to_offer = this->players_[player_index_to_offer];
@@ -251,7 +258,7 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         RollResult dice_roll = this->dice_roll();
         bool in_jail = update_position(player, dice_roll);
         if (in_jail) {
-            break;
+            return true;
         }
         this->handle_position(player);
         break;
@@ -274,18 +281,19 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         this->handle_position(player);
 
         if (this->in_jail(player)) {
-            // somehow in jail again
+            // jail after handle, community / chance
             return true;
         }
         break;
     }
     case (ActionType::ACTION_JAIL_ROLL_DOUBLE): {
-        if (!this->in_jail(player)) {
+        if (!this->in_jail(player) || player.jail_rolled_this_turn) {
             this->penalize(player);
             return true;
         }
         
         RollResult dice_roll = this->dice_roll();
+        player.jail_rolled_this_turn = true;
         if (!dice_roll.is_double) {
             break;
         }

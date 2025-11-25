@@ -60,6 +60,7 @@ void Engine::init_setup() {
         player.turns_in_jail = 0;
         player.jail_free_cards = 0;
         player.double_rolls = 0;
+        player.jail_rolled_this_turn = false;
 
         player.railroads_owned = 0;
         player.utilities_owned = 0;
