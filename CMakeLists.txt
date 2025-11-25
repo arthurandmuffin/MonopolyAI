@@ -7,4 +7,4 @@ include_directories(include)
 
 file(GLOB ENGINE_SRC "src/engine/*.cpp")
 
-add_library(monopoly_engine SHARED ${ENGINE_SRC})
+add_executable(monopoly_engine ${ENGINE_SRC})
