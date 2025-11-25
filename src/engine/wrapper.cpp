@@ -39,13 +39,95 @@ std::string json_escape(const std::string& in) {
     return oss.str();
 }
 
-// You need *some* way to serialize GameStateView.
-// Adjust this to whatever your API looks like.
+std::string to_json(const PlayerView& p) {
+    std::ostringstream oss;
+    oss << '{';
+
+    oss << "\"player_index\":"    << p.player_index    << ',';
+    oss << "\"cash\":"            << p.cash            << ',';
+    oss << "\"position\":"        << p.position        << ',';
+    oss << "\"retired\":"         << (p.retired ? "true" : "false") << ',';
+
+    oss << "\"in_jail\":"         << (p.in_jail ? "true" : "false") << ',';
+    oss << "\"turns_in_jail\":"   << p.turns_in_jail   << ',';
+    oss << "\"jail_free_cards\":" << p.jail_free_cards << ',';
+    oss << "\"double_rolls\":"    << p.double_rolls    << ',';
+
+    oss << "\"railroads_owned\":" << static_cast<unsigned int>(p.railroads_owned) << ',';
+    oss << "\"utilities_owned\":" << static_cast<unsigned int>(p.utilities_owned);
+
+    oss << '}';
+    return oss.str();
+}
+
+std::string to_json(const PropertyView& pr) {
+    std::ostringstream oss;
+    oss << '{';
+
+    oss << "\"position\":"      << pr.position      << ',';
+    oss << "\"property_id\":"   << pr.property_id   << ',';
+    oss << "\"owner_index\":"   << pr.owner_index   << ',';
+    oss << "\"is_owned\":"      << (pr.is_owned ? "true" : "false") << ',';
+    oss << "\"mortgaged\":"     << (pr.mortgaged ? "true" : "false") << ',';
+
+    // PropertyType as integer
+    oss << "\"type\":"          << static_cast<int>(pr.type) << ',';
+
+    oss << "\"colour_id\":"     << static_cast<unsigned int>(pr.colour_id) << ',';
+    oss << "\"house_price\":"   << pr.house_price   << ',';
+    oss << "\"houses\":"        << static_cast<unsigned int>(pr.houses) << ',';
+    oss << "\"hotel\":"         << (pr.hotel ? "true" : "false") << ',';
+
+    oss << "\"purchase_price\":"<< pr.purchase_price<< ',';
+    oss << "\"rent0\":"         << pr.rent0         << ',';
+    oss << "\"rent1\":"         << pr.rent1         << ',';
+    oss << "\"rent2\":"         << pr.rent2         << ',';
+    oss << "\"rent3\":"         << pr.rent3         << ',';
+    oss << "\"rent4\":"         << pr.rent4         << ',';
+    oss << "\"rentH\":"         << pr.rentH         << ',';
+
+    oss << "\"current_rent\":"  << pr.current_rent;
+
+    oss << '}';
+    return oss.str();
+}
+
 std::string to_json(const GameStateView& s) {
-    // Example placeholder:
-    // return s.to_json();  // if you already have this
-    // or manually build JSON for the state here.
-    return "{}"; // TODO: implement actual serialization
+    std::ostringstream oss;
+    oss << '{';
+
+    oss << "\"game_id\":"            << s.game_id            << ',';
+    oss << "\"houses_remaining\":"   << s.houses_remaining   << ',';
+    oss << "\"hotels_remaining\":"   << s.hotels_remaining   << ',';
+    oss << "\"current_player_index\":" << s.current_player_index << ',';
+    oss << "\"owed\":"               << s.owed               << ',';
+
+    // players array
+    oss << "\"players\":[";
+    if (s.players && s.players_remaining > 0) {
+        for (uint32_t i = 0; i < s.players_remaining; ++i) {
+            if (i > 0) oss << ',';
+            oss << to_json(s.players[i]);
+        }
+    }
+    oss << "],";
+
+    // properties array
+    oss << "\"properties\":[";
+    if (s.properties && s.num_properties > 0) {
+        for (uint32_t i = 0; i < s.num_properties; ++i) {
+            if (i > 0) oss << ',';
+            oss << to_json(s.properties[i]);
+        }
+    }
+    oss << "],";
+
+    // include counts explicitly as well
+    oss << "\"players_remaining\":" << s.players_remaining << ',';
+    oss << "\"num_properties\":"    << s.num_properties;
+
+    oss << '}';
+    return oss.str();
 }
 
 std::string to_json(const GameResult& r) {
@@ -56,7 +138,6 @@ std::string to_json(const GameResult& r) {
     oss << "\"turns\":"   << r.turns   << ',';
     oss << "\"winner\":"  << r.winner  << ',';
 
-    // penalties array
     oss << "\"penalties\":[";
     for (std::size_t i = 0; i < r.penalties.size(); ++i) {
         if (i > 0) oss << ',';
@@ -64,10 +145,8 @@ std::string to_json(const GameResult& r) {
     }
     oss << "],";
 
-    // final_state as nested JSON
     oss << "\"final_state\":" << to_json(r.final_state) << ',';
 
-    // log_path as string
     oss << "\"log_path\":" << json_escape(r.log_path);
 
     oss << '}';
