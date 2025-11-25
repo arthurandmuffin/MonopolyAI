@@ -92,6 +92,12 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         } else {
             if (index != -1) {
                 PropertyView* property = &this->properties_[index];
+                if (property->auctioned_this_turn) {
+                    this->penalize(player);
+                    property->auctioned_this_turn = false;
+                    return true;
+                }
+                property->auctioned_this_turn = true;
                 this->auction(property);
             }
         }
@@ -119,6 +125,7 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         Action trade_response = this->agent_adapters_[player_index_to_offer].trade_offer(&this->state_, &offer);
         if (trade_response.type != ACTION_TRADE_RESPONSE) {
             this->penalize(player_to_offer);
+            return true;
         }
 
         if (trade_response.trade_response) {
@@ -227,7 +234,6 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         this->penalize(player);
         return true;
     case (ActionType::ACTION_END_TURN):
-        std::cerr << "Ending turn\n";
         return true;
     case (ActionType::ACTION_PAY_JAIL_FINE): {
         if (!this->in_jail(player)) {
@@ -374,7 +380,7 @@ void Engine::handle_position(PlayerView& player) {
     }
 
     if (cost > 0) {
-        bool payable = this->raise_fund(player, rent);
+        bool payable = this->raise_fund(player, cost);
         if (payable) {
             assert(player.cash >= cost);
             player.cash -= cost;

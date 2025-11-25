@@ -88,6 +88,8 @@ void Engine::init_setup() {
             street.houses = 0;
             street.hotel = false;
 
+            street.auctioned_this_turn = false;
+
             street.purchase_price = property->purchase_price;
             auto& rent_values = property->rent;
             std::tie(street.rent0, street.rent1, street.rent2, street.rent3, street.rent4, street.rentH) =
@@ -108,6 +110,8 @@ void Engine::init_setup() {
             rail.is_owned = false;
             rail.mortgaged = false;
 
+            rail.auctioned_this_turn = false;
+
             rail.type = PropertyType::RAILROAD;
 
             rail.purchase_price = railroad->purchase_price;
@@ -126,6 +130,8 @@ void Engine::init_setup() {
             util.owner_index = -1;
             util.is_owned = false;
             util.mortgaged = false;
+
+            util.auctioned_this_turn = false;
 
             util.type = PropertyType::UTILITY;
 

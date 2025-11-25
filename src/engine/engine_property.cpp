@@ -12,11 +12,70 @@ void Engine::buy_property(PlayerView& player, PropertyView* property) {
         player.cash -= property->purchase_price;
         property->owner_index = player.player_index;
         property->is_owned = true;
-        if (property->type == PropertyType::RAILROAD) {
-            player.railroads_owned++;
-        } else if (property->type == PropertyType::UTILITY) {
-            player.utilities_owned++;
+        switch (property->type)
+        {
+        case (PropertyType::PROPERTY): {
+            const PropertyInfo* property_info = this->board_.propertyByTile(property->position);
+            if (is_monopoly(property_info, true)) {
+                ColourGroup group = this->board_.tilesOfColour(property_info->colour);
+                for (int i = 0; i < group.count; i++) {
+                    int index = this->position_to_properties_[group.tiles[i]];
+                    PropertyView* p = &this->properties_[index];
+                    if (p->houses == 0) {
+                        p->current_rent = p->rent0 * 2;
+                    }
+                }
+            } else {
+                property->current_rent = property->rent0;
+            }
+            break;
         }
+        case (PropertyType::RAILROAD): {
+            player.railroads_owned++;
+            const auto& rent_info = this->board_.railroads[0].rent;
+            int railroads_active = 0;
+            for (auto position : this->board_.railroad_positions) {
+                int index = this->position_to_properties_[position];
+                const PropertyView& railroad = this->properties_[index];
+                if (railroad.owner_index == player.player_index && !railroad.mortgaged) {
+                    railroads_active++;
+                }
+            }
+            assert(railroads_active >= 1);
+
+            for (auto position : this->board_.railroad_positions) {
+                int index = this->position_to_properties_[position];
+                PropertyView& railroad = this->properties_[index];
+                if (railroad.owner_index != player.player_index || railroad.mortgaged) {
+                    continue;
+                }
+                railroad.current_rent = rent_info[railroads_active - 1];
+            }
+            break;
+        }
+        case (PropertyType::UTILITY): {
+            player.utilities_owned++;
+            int utilities_active = 0;
+            for (auto position : this->board_.utility_positions) {
+                int index = this->position_to_properties_[position];
+                const PropertyView& utility = this->properties_[index];
+                if (utility.owner_index == player.player_index && !utility.mortgaged) {
+                    utilities_active++;
+                }
+            }
+            assert(utilities_active >= 1);
+
+            const double average_roll = 7.0;
+            const auto& multipliers = this->board_.utilities[0].multiplier;
+            for (auto position : this->board_.utility_positions) {
+                int index = this->position_to_properties_[position];
+                PropertyView& utility = this->properties_[index];
+                if (utility.owner_index == player.player_index) {
+                    utility.current_rent = average_roll * multipliers[utilities_active - 1];
+                }
+            }
+            break;
+        }}
     }
 }
 

@@ -41,6 +41,8 @@ typedef struct {
     int32_t rent0, rent1, rent2, rent3, rent4, rentH;
 
     int32_t current_rent;
+
+    bool auctioned_this_turn;
 } PropertyView;
 
 typedef struct {
