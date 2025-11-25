@@ -1,6 +1,7 @@
 [NEAT]
 fitness_criterion     = max
 fitness_threshold     = 10000
+no_fitness_termination = False
 pop_size              = 50
 reset_on_extinction   = False
 
@@ -9,6 +10,13 @@ reset_on_extinction   = False
 activation_default      = sigmoid
 activation_mutate_rate  = 0.05
 activation_options      = sigmoid tanh relu
+single_structural_mutation = false
+structural_mutation_surer = default
+bias_init_type = gaussian
+response_init_type = gaussian
+weight_init_type = gaussian
+enabled_rate_to_true_add = 0.0
+enabled_rate_to_false_add = 0.0
 
 # node aggregation options
 aggregation_default     = sum

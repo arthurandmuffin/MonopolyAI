@@ -8,7 +8,7 @@ import argparse
 import multiprocessing as mp
 from typing import Dict, List, Tuple
 
-ENGINE_PATH = ""
+ENGINE_PATH = "./build/Release/monopoly_engine.exe"
 NEAT_AGENT_PATH = "./build/agents/Release/neat_bridge.dll"
 OPPONENT_AGENTS = [
     "./build/agents/Release/neat_bridge.dll",
@@ -77,19 +77,70 @@ class NeatTraining:
         return game_config
     
     def run_game(self, genome_path: str, game_id: int, test: bool = False) -> Tuple[int, Dict]:
-        game_config = self.create_game_config(genome_path, game_id, test)
-        # Save game config to temporary file
-        config_path = f'temp_game_config_{game_id}.json'
-        with open(config_path, 'w') as f:
-            json.dump(game_config, f)
+        # Prepare agent configs
+        agents = []
+        neat_config = {
+            'genome_path': genome_path,
+            'config_path': self.config_path
+        }
+        agents.append({
+            'path': NEAT_AGENT_PATH,
+            'config': neat_config,
+            'name': 'NEATAgent'
+        })
 
+        if test:
+            for i, opponent_path in enumerate(NAIVE_OPPONENT_AGENTS[:self.num_opponents]):
+                agents.append({
+                    'path': opponent_path,
+                    'config': {},
+                    'name': f'Opponent{i+1}'
+                })
+        else:
+            for i, opponent_path in enumerate(OPPONENT_AGENTS[:self.num_opponents]):
+                agents.append({
+                    'path': opponent_path,
+                    'config': {},
+                    'name': f'Opponent{i+1}'
+                })
+
+        # Write each agent's config to a temp file
+        temp_files = []
         try:
+            agent_args = []
+            for idx, agent in enumerate(agents):
+                config_path = f'temp_agent_config_{game_id}_{idx}.json'
+                with open(config_path, 'w') as f:
+                    json.dump(agent['config'], f)
+                temp_files.append(config_path)
+                agent_args += [
+                    '--agent',
+                    agent['path'],
+                    config_path,
+                    agent['name']
+                ]
+
+            # Build the engine command
+            seed = random.randint(0, int(1e9))
+            max_turns = 1000
+            cmd = [
+                ENGINE_PATH,
+                str(game_id),
+                str(seed),
+                str(max_turns),
+            ] + agent_args
+
+            print("Running command:", ' '.join(cmd))
             result = subprocess.run(
-                [ENGINE_PATH, '--config', config_path],
+                cmd,
                 capture_output=True,
                 text=True,
                 timeout=30
             )
+            print("STDOUT:", result.stdout)
+            print("STDERR:", result.stderr)
+            print("Return code:", result.returncode)
+
             # Parse result
             if result.returncode == 0:
                 lines = result.stdout.strip().split('\n')
@@ -99,14 +150,12 @@ class NeatTraining:
                     if line.startswith('{') and 'winner' in line:
                         game_result = json.loads(line)
                         winner = game_result.get('winner', -1)
-                        # Extract game statistics
                         stats = {
                             'turns': game_result.get('turns', 0),
                             'winner': winner,
                             'game_id': game_id,
                             'penalties': game_result.get('penalties', {}),
                         }
-
                         return winner, stats
                 return -1, {'turns': 0, 'winner': -1, 'game_id': game_id}
             else:
@@ -119,7 +168,9 @@ class NeatTraining:
             print(f"Game {game_id} encountered an error: {e}")
             return -1, {'turns': 0, 'winner': -1, 'game_id': game_id}
         finally:
-            os.remove(config_path)
+            for f in temp_files:
+                if os.path.exists(f):
+                    os.remove(f)
 
     def evaluate_genome(self, genome, config) -> float: 
         # Save genome to temporary file
@@ -216,8 +267,10 @@ class NeatTraining:
         # Run the NEAT algorithm for a given number of generations
         best_genome = None
         if parallel:
+            print("Running parallel genome evaluation...")
             best_genome = p.run(self.eval_genomes_parallel, generations)
         else:
+            print("Running sequential genome evaluation...")
             best_genome = p.run(self.eval_genomes_sequential, generations)
         
         # Save the best genome
@@ -278,7 +331,7 @@ def main():
         NeatTraining.test_genome(genome_path=args.genome, num_games=args.num_games)
     else:
         print("Use --train to train or --test to test an agent")
-        print(f"Example: python {__file__} --train --generations 30 --games 5")
+        print(f"Example: python {__file__} --train --generations 30 --num_games 5")
         print(f"Example: python {__file__} --test --genome genomes/best_genome.pkl")
         
 if __name__ == "__main__":

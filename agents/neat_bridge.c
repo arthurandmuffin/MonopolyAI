@@ -84,7 +84,7 @@ static PyObject* auction_to_python(const AuctionView* auction) {
 // Helper: Convert trade offer to Python dict
 static PyObject* trade_to_python(const TradeOffer* offer) {
     PyObject* py_offer = PyDict_New();
-    PyDict_SetItemString(py_offer, "prop_player_index", PyLong_FromUnsignedLong(offer->prop_player_index));
+    PyDict_SetItemString(py_offer, "player_to_offer", PyLong_FromUnsignedLong(offer->player_to_offer));
     
     // offer_from
     PyObject* from_dict = PyDict_New();
@@ -206,8 +206,8 @@ Action agent_turn(void* agent_ptr, const GameStateView* state) {
             PyObject* bid = PyDict_GetItemString(result, "auction_bid");
             action.auction_bid = bid ? PyLong_AsUnsignedLong(bid) : 0;
         } else if (action.type == ACTION_MORTGAGE) {
-            PyObject* prop = PyDict_GetItemString(result, "mortgage_property");
-            action.mortgage_property = prop ? PyLong_AsUnsignedLong(prop) : 0;
+            PyObject* prop = PyDict_GetItemString(result, "property_position");
+            action.property_position = prop ? PyLong_AsUnsignedLong(prop) : 0;
         } else if (action.type == ACTION_TRADE_RESPONSE) {
             PyObject* response = PyDict_GetItemString(result, "trade_response");
             action.trade_response = response ? PyObject_IsTrue(response) : false;
