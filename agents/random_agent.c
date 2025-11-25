@@ -148,12 +148,6 @@ Action auction(void* agent_ptr, const GameStateView* state, const AuctionView* a
         uint32_t min_bid = (prop->purchase_price * 10) / 100;
         uint32_t max_bid = (prop->purchase_price * 50) / 100;
         
-        // Don't bid more than 30% of our cash
-        uint32_t cash_limit = (me->cash * 30) / 100;
-        if (max_bid > cash_limit) {
-            max_bid = cash_limit;
-        }
-        
         if (max_bid >= min_bid && max_bid >= 10) {
             uint32_t bid = random_range(agent, min_bid, max_bid);
             
@@ -179,8 +173,8 @@ Action trade_offer(void* agent_ptr, const GameStateView* state, const TradeOffer
         return action;
     }
     
-    // Random decision with slight bias toward rejection (realistic)
-    bool accept = random_float(agent) < 0.3f; // 30% chance to accept
+    // Random decision to accept or reject trade
+    bool accept = random_float(agent) < 0.5f; // 50% chance to accept
     
     action.type = ACTION_TRADE_RESPONSE;
     action.trade_response = accept;
