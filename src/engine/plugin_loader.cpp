@@ -37,10 +37,10 @@ public:
             throw std::runtime_error(std::string("dlopen failed: ") + dlerror());
         }
         // Find create_agent function and cast accordingly
-        factory_ = (AgentExport(*)(const char*))dlsym(lib_, "create_agent");
+        factory_ = (AgentExport(*)(const char*))dlsym(lib_, "create_agent_export");
 #endif
         if (!factory_) {
-            throw std::runtime_error("Factory symbol not found: create_agent");
+            throw std::runtime_error("Factory symbol not found: create_agent_export");
         }
     }
 

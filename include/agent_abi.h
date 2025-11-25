@@ -62,7 +62,7 @@ typedef struct {
     AgentVTable vtable;
 } AgentExport;
 
-AGENT_API AgentExport create_agent(const char* config_json);
+AGENT_API AgentExport create_agent_export(const char* config_json);
 
 #ifdef __cplusplus
 }

@@ -1,17 +1,22 @@
 #include "engine.h"
 #include "board.hpp"
 #include <numeric>
+#include <iostream>
 
 Engine::Engine(GameConfig config) : cfg_(std::move(config)), rng_(cfg_.seed), dice_(1, 6), board_(board()) {
     // Reserve space on agent_adapters_, mildly improves performance
+    std::cerr << "Engine init start\n";
+    std::cerr << "Agent adapters setup\n";
+    std::cerr << "Agent adapters allocation\n";
     agent_adapters_.reserve(cfg_.agent_specs.size());
-
+    std::cerr << "Agent adapters creation\n";
     // Loop through specs and create the corresponding adapters
     for (const auto& spec : cfg_.agent_specs) {
         // Emplace_back calls constructor and creates the AgentAdapter
         agent_adapters_.emplace_back(spec);
     }
 
+    std::cerr << "Notify agent of game start\n";
     for (size_t i = 0; i < agent_adapters_.size(); i++) {
         // Apparently generates a random seed
         const uint64_t seed = cfg_.seed ^ (static_cast<uint64_t>(i) + 0x9e3779b97f4a7c15ULL);
@@ -20,6 +25,7 @@ Engine::Engine(GameConfig config) : cfg_(std::move(config)), rng_(cfg_.seed), di
     }
 
     init_setup();
+    std::cerr << "Engine init complete\n";
 }
 
 void Engine::init_setup() {

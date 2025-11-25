@@ -2,14 +2,20 @@
 #include "agent_adapter.h"
 #include "plugin_loader.h"
 #include <stdexcept>
+#include <iostream>
 
 AgentAdapter::AgentAdapter(const AgentSpec& spec) : name_ (spec.name) {
+    std::cerr << "AgentAdapter constructor\n";
+    std::cerr << "AgentAdapter LoadAgentLibrary\n";
     handle_ = LoadAgentLibrary(spec.path);
+    std::cerr << "AgentAdaptoer make\n";
     export_ = handle_->make(spec.config_json);
+    std::cerr << "AgentAdapter self_\n";
     self_ = export_.vtable.create_agent(spec.config_json.c_str());
     if (!self_) {
         throw std::runtime_error("Agent create() returned null");
     }
+    std::cerr << "AgentAdapter constructed\n";
 }
 
 AgentAdapter::~AgentAdapter() {

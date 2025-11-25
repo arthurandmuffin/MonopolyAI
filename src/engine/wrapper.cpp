@@ -235,6 +235,11 @@ int main(int argc, char* argv[]) {
 
     Engine engine(config);
     GameResult result = engine.run();
+    std::cerr << "Engine.run() complete\n";
+    std::cerr << "Players pointer: " << result.final_state.players << "\n";
+    std::cerr << "Players count: " << result.final_state.players_remaining << "\n";
+    std::cerr << "Properties pointer: " << result.final_state.properties << "\n";
+    std::cerr << "Properties count: " << result.final_state.num_properties << "\n";
 
     std::cout << to_json(result) << '\n';
     return 0;

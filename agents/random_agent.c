@@ -185,7 +185,7 @@ Action trade_offer(void* agent_ptr, const GameStateView* state, const TradeOffer
 // Export vtable
 AgentVTable vtable = {
     .abi_version = abi_version,
-    .create_agent = create_agent,
+    .create_agent = create_agent_instance,
     .destroy_agent = destroy_agent,
     .game_start = game_start,
     .agent_turn = agent_turn,
