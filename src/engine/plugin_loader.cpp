@@ -29,7 +29,7 @@ public:
         if (!lib_) {
             throw std::runtime_error("LoadLibrary failed: " + library_path);
         }
-        factory_ = (AgentExport(*)(const char*))GetProcAddress(lib_, "create_agent");
+        factory_ = (AgentExport(*)(const char*))GetProcAddress(lib_, "create_agent_export");
 #else
         // Load binary in lib_
         lib_ = dlopen(library_path.c_str(), RTLD_NOW);
