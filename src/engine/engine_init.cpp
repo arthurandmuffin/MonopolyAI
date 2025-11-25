@@ -1,5 +1,6 @@
 #include "engine.h"
 #include "board.hpp"
+#include <numeric>
 
 Engine::Engine(GameConfig config) : cfg_(std::move(config)), rng_(cfg_.seed), dice_(1, 6), board_(board()) {
     // Reserve space on agent_adapters_, mildly improves performance

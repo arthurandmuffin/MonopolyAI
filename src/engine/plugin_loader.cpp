@@ -25,7 +25,7 @@ public:
     explicit PluginHandleImpl(const std::string& library_path) {
 
 #ifdef _WIN32
-        lib_ = LoadLibraryA(p.c_str());
+        lib_ = LoadLibraryA(library_path.c_str());
         if (!lib_) {
             throw std::runtime_error("LoadLibrary failed: " + library_path);
         }

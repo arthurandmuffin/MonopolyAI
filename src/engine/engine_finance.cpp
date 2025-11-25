@@ -2,6 +2,7 @@
 #include "board.hpp"
 #include <cassert>
 #include <set>
+#include <unordered_map>
 
 bool Engine::raise_fund(PlayerView& player, uint32_t owed) {
     // Pay with cash first
