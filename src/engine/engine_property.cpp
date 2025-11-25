@@ -6,8 +6,9 @@
 void Engine::buy_property(PlayerView& player, PropertyView* property) {
     assert(property->owner_index == -1);
     bool payable = this->raise_fund(player, property->purchase_price);
-    if (!payable) {
+    if (!payable) { 
         this->bankrupt(player, nullptr);
+        return;
     } else {
         player.cash -= property->purchase_price;
         property->owner_index = player.player_index;

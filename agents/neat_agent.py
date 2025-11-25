@@ -10,23 +10,40 @@ class NEATAgent:
         self.agent_index = 0
         self.genome = None
         self.net = None
-        
-        # Load genome if provided in config
-        if 'genome_path' in self.config:
-            with open(self.config['genome_path'], 'rb') as f:
-                self.genome = pickle.load(f)
-        
+        self.neat_config = None
+
         # Load NEAT config if provided
-        if 'neat_config_path' in self.config:
+        if 'config_path' in self.config:
             self.neat_config = neat.Config(
                 neat.DefaultGenome,
                 neat.DefaultReproduction,
                 neat.DefaultSpeciesSet,
                 neat.DefaultStagnation,
-                self.config['neat_config_path']
+                self.config['config_path']
             )
-            if self.genome:
-                self.net = neat.nn.FeedForwardNetwork.create(self.genome, self.neat_config)
+
+        # Load genome if provided in config
+        if 'genome_path' in self.config and self.config.get('config_path'):
+            # Normal case: load genome from file
+            with open(self.config['genome_path'], 'rb') as f:
+                self.genome = pickle.load(f)
+            self.net = neat.nn.FeedForwardNetwork.create(self.genome, self.neat_config)
+        else:
+            # Fallback: no genome provided
+            self.random_net()
+
+    def random_net(self):
+        if not self.config.get('config_path'):
+            raise RuntimeError("No NEAT config path provided for random init")
+
+        # Create a fresh genome with random weights
+        genome = neat.DefaultGenome(0)
+        genome.configure_new(self.neat_config.genome_config)
+        self.genome = genome
+
+        # Build the network
+        self.net = neat.nn.FeedForwardNetwork.create(self.genome, self.neat_config)
+
     
     def game_start(self, agent_index: int, seed: int):
         self.agent_index = agent_index
@@ -233,7 +250,7 @@ class NEATAgent:
         cash_after_purchase = (agent_player['cash'] - prop['purchase_price']) 
 
         # Rent potential
-        rent_potential = prop['base_rent'] / max(agent_player['cash'], 1)
+        rent_potential = prop['current_rent'] / max(agent_player['cash'], 1)
 
         features.extend([
             prop['purchase_price'] / 400.0,
@@ -428,18 +445,13 @@ class NEATAgent:
         
         return trade_offer
 
-    def agent_turn(self, state):
-        # if no neural network, use heuristic
-        if not self.net:
-            return self.heuristic_turn(state)
-        
+    def agent_turn(self, state) -> Dict:
         agent_player = state['players'][self.agent_index]
         
         # Handle jail
         if agent_player['in_jail']:
             features = np.concatenate([self.extract_features(state), self.extract_jail_features(state)])
             output = self.net.activate(features)
-            
             # Outputs [3-5] for jail decisions
             use_card_score = output[3] if len(output) > 3 else 0.0
             pay_fine_score = output[4] if len(output) > 4 else 0.0
@@ -466,11 +478,13 @@ class NEATAgent:
             output = self.net.activate(features)
             buy_score = output[0]
             if buy_score > 0.5 and agent_player['cash'] > property_at_position['purchase_price']:
+                print("Deciding to buy property:", property_at_position['property_id'], "with score:", buy_score)
                 return {
                     'action_type': 0,  # ACTION_LANDED_PROPERTY
                     'buying_property': True
                 }
             else:
+                print("Deciding not to buy property:", property_at_position['property_id'], "with score:", buy_score)
                 return {
                     'action_type': 0,
                     'buying_property': False
@@ -495,15 +509,12 @@ class NEATAgent:
             if high_value_properties:
                 trade_offer = self.construct_trade_offer(state, high_value_properties)
                 if trade_offer:
+                    print("Proposing trade offer:", trade_offer)
                     return trade_offer
         
         return {'action_type': 8 } # ACTION_END_TURN
     
     def auction(self, state: Dict, auction: Dict) -> Dict:
-        # if no neural network, use heuristic
-        if not self.net:
-            return self.heuristic_auction(state, auction)
-        
         agent_player = state['players'][self.agent_index]
         property_id = auction['property_id']
 
@@ -525,7 +536,7 @@ class NEATAgent:
         max_bid = int(prop['purchase_price'] * bid_multiplier * 0.8)
         cash_limit = int(agent_player['cash'] * 0.3)
         bid = min(max_bid, cash_limit)
-
+        print("Auction bid decision for property", property_id, "with score:", bid_multiplier, "proposed bid:", bid)
         if bid >= 10 and bid_multiplier > 0.3:
             return {
                 'action_type': 7,  # ACTION_AUCTION_BID
@@ -536,10 +547,6 @@ class NEATAgent:
     
     def trade_offer(self, state: Dict, offer: Dict) -> Dict:
         # Respond to trade offer
-        # if no neural network, use heuristic
-        if not self.net:
-            return self.heuristic_trade_offer(state, offer)
-        
         # Use neural network to evaluate trade
         features = np.concatenate([self.extract_features(state), self.extract_trade_features(state, offer)])
         output = self.net.activate(features)
@@ -547,46 +554,8 @@ class NEATAgent:
         # output[2] -> trade acceptance score
         cash_gain = offer['offer_to']['cash'] - offer['offer_from']['cash']
         accept = output[2] > 0.7 and cash_gain > 0
-        
+        print("Trade offer decision with acceptance score:", output[2], "cash gain:", cash_gain, "accept:", accept)
         return {
             'action_type': 2,  # ACTION_TRADE_RESPONSE
             'trade_response': accept
-        }
-    
-    def heuristic_turn(self, state: Dict) -> Dict:
-        # Fallback heuristic for agent turn
-        agent_player = state['players'][self.agent_index]
-        
-        if agent_player['in_jail']:
-            if agent_player['jail_free_cards'] > 0:
-                return {'action_type': 10}
-            elif agent_player['cash'] >= 50:
-                return {'action_type': 9}
-            return {'action_type': 11}
-        
-        for prop in state['properties']:
-            if prop['position'] == agent_player['position'] and not prop['is_owned']:
-                if agent_player['cash'] > prop['purchase_price'] * 1.5:
-                    return {'action_type': 0, 'buying_property': True}
-                return {'action_type': 0, 'buying_property': False}
-        
-        return {'action_type': 8}
-    
-    def heuristic_auction(self, state: Dict, auction: Dict) -> Dict:
-        # Fallback heuristic for auction
-        agent_player = state['players'][self.agent_index]
-        
-        for prop in state['properties']:
-            if prop['property_id'] == auction['property_id']:
-                if agent_player['cash'] > prop['purchase_price']:
-                    return {'action_type': 7, 'auction_bid': prop['purchase_price'] // 2}
-        
-        return {'action_type': 8}
-    
-    def heuristic_trade_offer(self, state: Dict, offer: Dict) -> Dict:
-        # Fallback heuristic for trade offer
-        cash_gain = offer['offer_to']['cash'] - offer['offer_from']['cash']
-        return {
-            'action_type': 2,
-            'trade_response': cash_gain > 0
         }

@@ -26,7 +26,7 @@ NAIVE_OPPONENT_AGENTS = [
     ]
 
 class NeatTraining:
-    def __init__(self, config_path='neat_config.txt' , num_opponents: int = 2, num_games: int = 50):
+    def __init__(self, config_path='agents/neat_config.txt' , num_opponents: int = 2, num_games: int = 50):
         self.config_path = config_path
         self.num_opponents = num_opponents
         self.num_games = num_games
@@ -57,17 +57,17 @@ class NeatTraining:
 
         # Opponent agents
         if test:
+            for i, opponent_path in enumerate(OPPONENT_AGENTS[:self.num_opponents]):
+                agents.append({
+                    'path': opponent_path,
+                    'config': neat_config,
+                    'name': f'Opponent{i+1}'
+                })
+        else:
             for i, opponent_path in enumerate(NAIVE_OPPONENT_AGENTS[:self.num_opponents]):
                 agents.append({
                     'path': opponent_path,
                     'config': {},
-                    'name': f'Opponent{i+1}'
-                })
-        else:
-            for i, opponent_path in enumerate(OPPONENT_AGENTS[:self.num_opponents]):
-                agents.append({
-                    'path': opponent_path,
-                    'config': json.dumps({}),
                     'name': f'Opponent{i+1}'
                 })
         

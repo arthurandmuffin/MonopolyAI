@@ -154,6 +154,7 @@ bool Engine::chance_card_draw(PlayerView& player) {
     case 0:
         // Advance to Boardwalk.
         player.position = 39;
+        break;
     case 1:
         // Advance to Go & collect $200.
         player.position = 0;
@@ -165,12 +166,14 @@ bool Engine::chance_card_draw(PlayerView& player) {
             player.cash += 200;
         }
         player.position = 24;
+        break;
     case 3:
         // Advance to St. Charles Place, collect $200 if pass Go
         if (player.position > 11) {
             player.cash += 200;
         }
         player.position = 11;
+        break;
     case 4:
     case 5: {
         // Advance to the nearest Railroad, double rent if owned already.

@@ -33,7 +33,7 @@ int abi_version() {
     return ABI_VERSION;
 }
 
-void* create_agent_instance(const char* config_json) {
+void* create_agent(const char* config_json) {
     RandomAgent* agent = malloc(sizeof(RandomAgent));
     if (!agent) {
         return NULL;
@@ -185,7 +185,7 @@ Action trade_offer(void* agent_ptr, const GameStateView* state, const TradeOffer
 // Export vtable
 AgentVTable vtable = {
     .abi_version = abi_version,
-    .create_agent = create_agent_instance,
+    .create_agent = create_agent,
     .destroy_agent = destroy_agent,
     .game_start = game_start,
     .agent_turn = agent_turn,
@@ -193,7 +193,7 @@ AgentVTable vtable = {
     .trade_offer = trade_offer
 };
 
-AGENT_API AgentExport create_agent(const char* config_json) {
+AGENT_API AgentExport create_agent_export(const char* config_json) {
     AgentExport export;
     export.vtable = vtable;
     return export;
