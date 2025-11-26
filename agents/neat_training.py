@@ -126,7 +126,7 @@ class NeatTraining:
 
             # Build the engine command
             seed = random.randint(0, int(1e9))
-            max_turns = 1000
+            max_turns = 300
             cmd = [
                 ENGINE_PATH,
                 str(game_id),
@@ -141,37 +141,33 @@ class NeatTraining:
                 text=True,
                 timeout=30,
             )
-            print("STDOUT:", result.stdout)
-            print("STDERR:", result.stderr)
             print("Return code:", result.returncode)
 
             # Parse result
             if result.returncode == 0:
                 lines = result.stdout.strip().split('\n')
                 winner = -1
-                turns = 0
                 for line in lines:
                     if line.startswith('{') and 'winner' in line:
                         game_result = json.loads(line)
                         winner = game_result.get('winner', -1)
                         stats = {
-                            'turns': game_result.get('turns', 0),
                             'winner': winner,
                             'game_id': game_id,
                             'penalties': game_result.get('penalties', {}),
                             'player_scores': game_result.get('player_scores', []),
                         }
                         return winner, stats
-                return -1, {'turns': 0, 'winner': -1, 'game_id': game_id}
+                return -1, {'winner': -1, 'game_id': game_id}
             else:
                 print(f"Game {game_id} failed with error: {result.stderr}")
-                return -1, {'turns': 0, 'winner': -1, 'game_id': game_id}
+                return -1, {'winner': -1, 'game_id': game_id}
         except subprocess.TimeoutExpired:
             print(f"Game {game_id} timed out.")
-            return -1, {'turns': 0, 'winner': -1, 'game_id': game_id}
+            return -1, {'winner': -1, 'game_id': game_id}
         except Exception as e:
             print(f"Game {game_id} encountered an error: {e}")
-            return -1, {'turns': 0, 'winner': -1, 'game_id': game_id}
+            return -1, {'winner': -1, 'game_id': game_id}
         finally:
             for f in temp_files:
                 if os.path.exists(f):
@@ -201,7 +197,7 @@ class NeatTraining:
 
             # Build the engine command
             seed = random.randint(0, int(1e9))
-            max_turns = 1000
+            max_turns = 300
             cmd = [
                 ENGINE_PATH,
                 str(game_id),
@@ -214,39 +210,36 @@ class NeatTraining:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=30,
+                timeout=60,
             )
             print("STDOUT:", result.stdout)
-            print("STDERR:", result.stderr)
             print("Return code:", result.returncode)
 
             # Parse result
             if result.returncode == 0:
                 lines = result.stdout.strip().split('\n')
                 winner = -1
-                turns = 0
                 for line in lines:
                     if line.startswith('{') and 'winner' in line:
                         game_result = json.loads(line)
                         winner = game_result.get('winner', -1)
                         stats = {
-                            'turns': game_result.get('turns', 0),
                             'winner': winner,
                             'game_id': game_id,
                             'penalties': game_result.get('penalties', {}),
                             'player_scores': game_result.get('player_scores', []),
                         }
                         return winner, stats
-                return -1, {'turns': 0, 'winner': -1, 'game_id': game_id}
+                return -1, {'winner': -1, 'game_id': game_id}
             else:
                 print(f"Game {game_id} failed with error: {result.stderr}")
-                return -1, {'turns': 0, 'winner': -1, 'game_id': game_id}
+                return -1, {'winner': -1, 'game_id': game_id}
         except subprocess.TimeoutExpired:
             print(f"Game {game_id} timed out.")
-            return -1, {'turns': 0, 'winner': -1, 'game_id': game_id}
+            return -1, {'winner': -1, 'game_id': game_id}
         except Exception as e:
             print(f"Game {game_id} encountered an error: {e}")
-            return -1, {'turns': 0, 'winner': -1, 'game_id': game_id}
+            return -1, {'winner': -1, 'game_id': game_id}
         finally:
             for f in temp_files:
                 if os.path.exists(f):
@@ -337,10 +330,7 @@ class NeatTraining:
                 win_rate = stats['wins'] / stats['games']
             avg_score = stats['total_score'] / self.num_games
             avg_penalty = stats['penalties'] / self.num_games
-            if win_rate > 0:
-                fitness = win_rate * 1000 - avg_penalty / 10 + min(avg_score / 100, 90)
-            else:
-                fitness = min(avg_score / 100, 90) - avg_penalty / 10
+            fitness = win_rate * 1000 - avg_penalty / 10 + min(avg_score / 100, 90)
             fitness_results[gid] = fitness
 
         return fitness_results
@@ -490,7 +480,6 @@ class NeatTraining:
     def test_genome(genome_path='genomes/best_genome.pkl', num_games: int = 20):
         trainer = NeatTraining(num_opponents=3, num_games=num_games)
         wins = 0
-        total_turns = 0
         valid_games = 0
         for i in range(num_games):
             best_genome, stats = trainer.run_game(genome_path, i, test=True)
@@ -498,18 +487,16 @@ class NeatTraining:
                 valid_games += 1
                 if best_genome == 0:
                     wins += 1
-                total_turns += stats['turns']
                 penalties = stats.get('penalties', {})
                 #print stats based on output
 
 
         if valid_games > 0:
             win_rate = wins / valid_games
-            avg_turns = total_turns / valid_games
             print(f"Test Results over {valid_games} valid games:")
             print(f"  Wins: {wins}")
             print(f"  Win Rate: {win_rate * 100:.2f}%")
-            print(f"  Average Turns: {avg_turns:.2f}")
+            print(f" Penalties: {penalties}")
         else:
             print("No valid games were played during testing.")
 

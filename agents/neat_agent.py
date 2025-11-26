@@ -206,9 +206,9 @@ class NEATAgent:
             monopoly_potential, # higher weight -> dont normalize
             offer['offer_to'].get('jail_cards', 0) / 2.0,
         ])
-        while len(features) < 15:
+        while len(features) < 20:
             features.append(0.0)
-        return np.array(features[:15], dtype=np.float32)
+        return np.array(features[:20], dtype=np.float32)
     
     def extract_property_features(self, state: Dict, property_id: int) -> np.ndarray:
         '''
@@ -263,10 +263,17 @@ class NEATAgent:
             affordability,
             cash_after_purchase / 2000.0,
             rent_potential,
+            1.0 if prop['auctioned_this_turn'] else 0.0,
+            prop['rent0'] / 2000.0,
+            prop['rent1'] / 2000.0, 
+            prop['rent2'] / 2000.0,
+            prop['rent3'] / 2000.0,
+            prop['rent4'] / 2000.0,
+            prop['rentH'] / 2000.0, 
         ])
-        while len(features) < 15:
+        while len(features) < 20:
             features.append(0.0)
-        return np.array(features[:15], dtype=np.float32)
+        return np.array(features[:20], dtype=np.float32)
     
     def extract_jail_features(self, state: Dict) -> np.ndarray:
         features = []
@@ -301,9 +308,9 @@ class NEATAgent:
             num_monopolies / 9.0,
             state['owed'] / 2000.0 # debt
         ])
-        while len(features) < 15:
+        while len(features) < 20:
             features.append(0.0)
-        return np.array(features[:15], dtype=np.float32)
+        return np.array(features[:20], dtype=np.float32)
 
     def extract_trade_proposal_features(self, state: Dict) -> np.ndarray:
         features = []
@@ -388,9 +395,9 @@ class NEATAgent:
             state['houses_remaining'] / 32.0,
             state['hotels_remaining'] / 12.0,
         ])
-        while len(features) < 15:
+        while len(features) < 20:
             features.append(0.0)
-        return np.array(features[:15], dtype=np.float32)
+        return np.array(features[:20], dtype=np.float32)
 
     def construct_trade_offer(self, state: Dict, high_value_properties: List[Dict]) -> Optional[Dict]:
         agent_player = state['players'][self.agent_index]
@@ -470,6 +477,7 @@ class NEATAgent:
         for prop in state['properties']:
             if prop['position'] == agent_player['position'] and not prop['is_owned']:
                 property_at_position = prop
+                #print("Landed on unowned property:", property_at_position['property_id'])
                 break
         
         if property_at_position:
@@ -478,13 +486,13 @@ class NEATAgent:
             output = self.net.activate(features)
             buy_score = output[0]
             if buy_score > 0.5 and agent_player['cash'] > property_at_position['purchase_price']:
-                print("Deciding to buy property:", property_at_position['property_id'], "with score:", buy_score)
+                #print("Deciding to buy property:", property_at_position['property_id'], "with score:", buy_score)
                 return {
                     'action_type': 0,  # ACTION_LANDED_PROPERTY
                     'buying_property': True
                 }
             else:
-                print("Deciding not to buy property:", property_at_position['property_id'], "with score:", buy_score)
+                #print("Deciding not to buy property:", property_at_position['property_id'], "with score:", buy_score)
                 return {
                     'action_type': 0,
                     'buying_property': False
@@ -536,8 +544,8 @@ class NEATAgent:
         max_bid = int(prop['purchase_price'] * bid_multiplier * 0.8)
         cash_limit = int(agent_player['cash'] * 0.3)
         bid = min(max_bid, cash_limit)
-        print("Auction bid decision for property", property_id, "with score:", bid_multiplier, "proposed bid:", bid)
         if bid >= 10 and bid_multiplier > 0.3:
+            #print("Bidding", bid, "on property", property_id)
             return {
                 'action_type': 7,  # ACTION_AUCTION_BID
                 'auction_bid': bid

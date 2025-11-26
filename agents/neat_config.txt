@@ -1,6 +1,6 @@
 [NEAT]
 fitness_criterion     = max
-fitness_threshold     = 10000
+fitness_threshold     = 9000
 no_fitness_termination = False
 pop_size              = 16
 reset_on_extinction   = False
@@ -53,7 +53,7 @@ node_delete_prob        = 0.2
 
 # network parameters
 num_hidden              = 0
-num_inputs              = 45
+num_inputs              = 50
 num_outputs             = 34
 
 # node response options
