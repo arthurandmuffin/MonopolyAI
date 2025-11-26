@@ -43,7 +43,9 @@ typedef struct {
 
     int32_t current_rent;
 
+    // Flags for agent
     bool auctioned_this_turn;
+    bool is_monopoly;
 } PropertyView;
 
 typedef struct {

@@ -90,6 +90,7 @@ void Engine::init_setup() {
             street.hotel = false;
 
             street.auctioned_this_turn = false;
+            street.is_monopoly = false;
 
             street.purchase_price = property->purchase_price;
             auto& rent_values = property->rent;

@@ -22,6 +22,7 @@ void Engine::buy_property(PlayerView& player, PropertyView* property) {
                 for (int i = 0; i < group.count; i++) {
                     int index = this->position_to_properties_[group.tiles[i]];
                     PropertyView* p = &this->properties_[index];
+                    p->is_monopoly = true;
                     if (p->houses == 0) {
                         p->current_rent = p->rent0 * 2;
                     }
