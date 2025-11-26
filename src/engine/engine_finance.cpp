@@ -455,6 +455,7 @@ void Engine::mortgage(PlayerView& player, PropertyView* property) {
 
 void Engine::auction(PropertyView* property) {
     assert(property->houses == 0);
+    assert(property);
     property->owner_index = -1;
     property->is_owned = false;
     while (true) {
@@ -523,6 +524,7 @@ void Engine::auction(PropertyView* property) {
         winner.cash -= auction.current_bid;
         property->owner_index = highest_bidder;
         property->is_owned = true;
+        this->update_rent(*property);
         return;
     }
 }

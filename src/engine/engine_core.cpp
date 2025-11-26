@@ -60,20 +60,23 @@ GameResult Engine::run() {
             }
             
 
-            int index = this->position_to_properties_[player.position];
-            if (index != -1) {
-                PropertyView& property_on = this->properties_[index];
+            int property_index = this->position_to_properties_[player.position];
+            if (property_index != -1) {
+                PropertyView& property_on = this->properties_[property_index];
                 property_on.auctioned_this_turn = false;
             }
             player.jail_rolled_this_turn = false;
         }
         turn++;
     }
+
+    
     
     GameResult result = {
         this->cfg_.game_id,
         static_cast<uint64_t>(turn),
         winner,
+        this->get_player_scores(),
         this->penalties_,
         this->state_,
     };
@@ -428,4 +431,45 @@ RollResult Engine::dice_roll() {
     int roll1 = dice_(rng_);
     int roll2 = dice_(rng_);
     return {roll1, roll2, roll1 == roll2};
+}
+
+std::vector<double> Engine::get_player_scores() {
+    std::vector<double> scores;
+
+    for (int i = 0; i < this->players_.size(); i++) {
+        scores.push_back(this->networth(players_[i]) + 4 * this->expected_income(players_[i]));
+    }
+    return scores;
+}
+
+double Engine::networth(PlayerView& player) {
+    double networth = 0;
+
+    networth += player.cash;
+    
+    for (PropertyView& property : this->properties_) {
+        if (property.owner_index != player.player_index) {
+            continue;
+        }
+
+        double property_worth = 0;
+        property_worth += property.purchase_price;
+        if (property.type == PropertyType::PROPERTY) {
+            property_worth += property.house_price * property.houses;
+        }
+        networth += property_worth;
+    }
+    return networth;
+}
+
+double Engine::expected_income(PlayerView& player) {
+    double expected_income = 0;
+
+    for (PropertyView& property : this->properties_) {
+        if (property.owner_index != player.player_index) {
+            continue;
+        }
+        expected_income += this->board_.tile_probability[property.position] * property.current_rent;
+    }
+    return expected_income;
 }

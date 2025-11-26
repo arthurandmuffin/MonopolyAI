@@ -145,6 +145,13 @@ std::string to_json(const GameResult& r) {
     }
     oss << "],";
 
+    oss << "\"player_scores\":[";
+    for (std::size_t i = 0; i < r.player_scores.size(); ++i) {
+        if (i > 0) oss << ',';
+        oss << r.player_scores[i];
+    }
+    oss << "],";
+
     oss << "\"final_state\":" << to_json(r.final_state) << ',';
 
     oss << "\"log_path\":" << json_escape(r.log_path);

@@ -77,6 +77,76 @@ uint32_t Engine::get_utility_rent(PlayerView& player, const int utilityIndex, bo
     }
 }
 
+void Engine::update_rent(PropertyView& property) {
+    const PropertyInfo* property_info = this->board_.propertyByTile(property.position);
+
+    if (!property.is_owned) {
+        property.current_rent = 0;
+        return;
+    }
+    
+    switch (property.type)
+    {
+    case (PropertyType::PROPERTY): {
+        if (property.houses > 0) {
+            property.current_rent = property_info->rent[property.houses];
+        }
+
+        if (is_monopoly(property_info, true)) {
+            property.current_rent = property.rent0 * 2;
+        } else {
+            property.current_rent = property.rent0;
+        }
+        break;
+    }
+    case (PropertyType::RAILROAD): {
+        PlayerView& player = this->players_[property.owner_index];
+        const auto& rent_info = this->board_.railroads[0].rent;
+        int railroads_active = 0;
+        for (auto position : this->board_.railroad_positions) {
+            int index = this->position_to_properties_[position];
+            const PropertyView& railroad = this->properties_[index];
+            if (railroad.owner_index == player.player_index && !railroad.mortgaged) {
+                railroads_active++;
+            }
+        }
+        assert(railroads_active >= 1);
+
+        for (auto position : this->board_.railroad_positions) {
+            int index = this->position_to_properties_[position];
+            PropertyView& railroad = this->properties_[index];
+            if (railroad.owner_index != player.player_index || railroad.mortgaged) {
+                continue;
+            }
+            railroad.current_rent = rent_info[railroads_active - 1];
+        }
+        break;
+    }
+    case (PropertyType::UTILITY): {
+        PlayerView& player = this->players_[property.owner_index];
+        int utilities_active = 0;
+        for (auto position : this->board_.utility_positions) {
+            int index = this->position_to_properties_[position];
+            const PropertyView& utility = this->properties_[index];
+            if (utility.owner_index == player.player_index && !utility.mortgaged) {
+                utilities_active++;
+            }
+        }
+        assert(utilities_active >= 1);
+
+        const double average_roll = 7.0;
+        const auto& multipliers = this->board_.utilities[0].multiplier;
+        for (auto position : this->board_.utility_positions) {
+            int index = this->position_to_properties_[position];
+            PropertyView& utility = this->properties_[index];
+            if (utility.owner_index == player.player_index) {
+                utility.current_rent = average_roll * multipliers[utilities_active - 1];
+            }
+        }
+        break;
+    }}
+}
+
 // active_monopoly to see if all unmortgaged as well
 bool Engine::is_monopoly(const PropertyInfo* street, bool active_monopoly) {
     const ColourGroup& colour_group = this->board_.tilesOfColour(street->colour);

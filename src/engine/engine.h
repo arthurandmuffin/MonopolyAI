@@ -20,6 +20,7 @@ struct GameResult {
     uint64_t game_id;
     uint64_t turns;
     int winner; // -1 if draw/timeout
+    std::vector<double> player_scores;
     std::vector<double> penalties;
     GameStateView final_state;
     std::string log_path;
@@ -69,11 +70,16 @@ private:
 
     void penalize(PlayerView& player);
 
+    std::vector<double> get_player_scores();
+    double networth(PlayerView& player);
+    double expected_income(PlayerView& player);
+
     // engine_rent.cpp
     uint32_t get_rent(PlayerView& player, bool max_rent);
     uint32_t get_street_rent(PlayerView& player, const PropertyInfo* street);
     uint32_t get_railroad_rent(PlayerView& player, const int railroadIndex);
     uint32_t get_utility_rent(PlayerView& player, const int utilityIndex, bool max_rent);
+    void update_rent(PropertyView& property);
     bool developed_monopoly(PropertyView* property);
     bool is_monopoly(const PropertyInfo* street, bool active_monopoly);
 
