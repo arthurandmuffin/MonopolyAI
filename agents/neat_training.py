@@ -177,7 +177,7 @@ class NeatTraining:
                 if os.path.exists(f):
                     os.remove(f)
 
-    def run_tournament_game(self, genome_path: List[str], game_id: int, test: bool = False) -> Tuple[int, Dict]:
+    def run_tournament_game(self, genome_path: List[str], game_id: int) -> Tuple[int, Dict]:
         # Prepare agent configs
         config = self.create_tournament_config(genome_path, game_id)
 
@@ -332,6 +332,7 @@ class NeatTraining:
         # Calculate fitness for each genome
         fitness_results = {}
         for gid, stats in genome_stats.items():
+            win_rate = 0
             if stats['games'] > 0:
                 win_rate = stats['wins'] / stats['games']
             avg_score = stats['total_score'] / self.num_games
