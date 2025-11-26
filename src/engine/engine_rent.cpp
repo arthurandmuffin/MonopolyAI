@@ -93,7 +93,6 @@ void Engine::update_rent(PropertyView& property) {
         }
 
         if (is_monopoly(property_info, true)) {
-            property.current_rent = property.rent0 * 2;
             ColourGroup group = this->board_.tilesOfColour(property_info->colour);
             for (int i = 0; i < group.count; i++) {
                 int index = this->position_to_properties_[group.tiles[i]];

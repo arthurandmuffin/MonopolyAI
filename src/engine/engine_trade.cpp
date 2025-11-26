@@ -21,6 +21,7 @@ void Engine::trade(PlayerView& playerA, TradeDetail& playerA_assets, PlayerView&
             playerB.utilities_owned++;
             playerA.utilities_owned--;
         }
+        this->update_rent(asset);
     }
 
     // playerB_assets -> player A
@@ -43,6 +44,7 @@ void Engine::trade(PlayerView& playerA, TradeDetail& playerA_assets, PlayerView&
             playerA.utilities_owned++;
             playerB.utilities_owned--;
         }
+        this->update_rent(asset);
     }
 }
 
