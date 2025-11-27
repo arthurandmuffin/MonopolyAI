@@ -49,13 +49,11 @@ class NEATAgent:
         self.agent_index = agent_index
         self.seed = seed
     
-    def extract_features(self, state: Dict) -> np.ndarray:
+    def extract_features(self, state: Dict, trade_offer: Optional[Dict] = None) -> np.ndarray:
         """
-        Features include:
-        - Player's own state (cash, position, properties owned, etc.)
-        - Opponent states (aggregated)
-        - Property ownership and development
-        - Board position information
+        Extract comprehensive game state features.
+        Returns 70-dimensional feature vector.
+        Includes optional trade offer features.
         """
         features = []
         
@@ -69,9 +67,9 @@ class NEATAgent:
                 opponents.append(player)
         
         if not agent_player:
-            return np.zeros(100)  # Fallback
+            return np.zeros(70)
         
-        # Player features (normalized)
+        # Player features
         features.extend([
             agent_player['cash'] / 2000.0,  
             agent_player['position'] / 40.0,  
@@ -82,8 +80,8 @@ class NEATAgent:
             agent_player['utilities_owned'] / 2.0,
         ])
         
-        # Count our properties by color (Normalized)
-        color_counts = [0] * 9  # 9 color groups
+        # Property ownership by color
+        color_counts = [0] * 9
         total_houses = 0
         total_hotels = 0
         total_property_value = 0
@@ -95,22 +93,24 @@ class NEATAgent:
                 total_hotels += 1 if prop['hotel'] else 0
                 total_property_value += prop['purchase_price']
         
-        features.extend([c / 3.0 for c in color_counts])  
+        features.extend([c / 3.0 for c in color_counts])
+        
+        # Development features
         features.extend([
             total_houses / 32.0,
             total_hotels / 12.0,
             total_property_value / 10000.0,
         ])
         
-        # Opponent features (aggregated)
+        # Opponent features
         if opponents:
-            avg_opp_cash = sum(p['cash'] for p in opponents) / len(opponents) 
+            avg_opp_cash = sum(p['cash'] for p in opponents) / len(opponents)
             avg_opp_properties = sum(
                 1 for prop in state['properties'] 
                 if prop['owner_index'] != self.agent_index and prop['is_owned']
             ) / len(opponents)
-            max_opp_cash = max(p['cash'] for p in opponents) 
-            active_opponents = len([p for p in opponents if not p['retired']]) 
+            max_opp_cash = max(p['cash'] for p in opponents)
+            active_opponents = len([p for p in opponents if not p['retired']])
             
             features.extend([
                 avg_opp_cash / 2000.0,
@@ -121,10 +121,8 @@ class NEATAgent:
         else:
             features.extend([0.0, 0.0, 0.0, 0.0])
         
-        # Property availability
-        unowned_properties = sum(1 for prop in state['properties'] if not prop['is_owned'])        
-        
-        # Game progress indicator
+        # Game state features
+        unowned_properties = sum(1 for prop in state['properties'] if not prop['is_owned'])
         total_wealth = sum(p['cash'] for p in state['players'])
         wealth_ratio = agent_player['cash'] / max(total_wealth, 1)
         
@@ -135,269 +133,144 @@ class NEATAgent:
             wealth_ratio,
             state['owed'] / 2000.0
         ])
-        # Pad to fixed size of 30
-        while len(features) < 30:
-            features.append(0.0)
         
-        return np.array(features[:30], dtype=np.float32)
-    
-    def extract_trade_features(self, state: Dict, offer: Dict) -> np.ndarray:
-        """
-        Extract features specific to trade offers.
-        Features include
-        - Cash difference
-        - Number of properties offered to each side
-        - Total value of properties offered
-        - Railroads/utilities offered
-        - Monopoly completion potential
-        """
-        features = []
-
-        # Cash difference
-        cash_gain = offer['offer_to']['cash'] - offer['offer_from']['cash']
-        
-        # Properties offered
-        props_to = offer['offer_to'].get('properties', [])
-        props_from= offer['offer_from'].get('properties', [])
-        
-        num_props_to = len(props_to)
-        num_props_from = len(props_from)
-        
-        # Total value of properties
-        prop_values = {p['property_id']: p['purchase_price'] for p in state['properties']}
-        value_to = sum(prop_values.get(pid, 0) for pid in props_to)
-        value_from = sum(prop_values.get(pid, 0) for pid in props_from)
-        
-        # Railroads/utilities 
-        props_by_id = {}
-        for p in state['properties']:
-            props_by_id[p['property_id']] = p
-
-        railroads_to = sum(1 for pid in props_to if props_by_id.get(pid, {}).get('type') == 2)
-        utilities_to = sum(1 for pid in props_to if props_by_id.get(pid, {}).get('type') == 1)
-        
-        # Monopoly completion 
-        monopoly_potential = 0
-        for pid in props_to:
-            if pid not in props_by_id:
-                continue
-            prop = props_by_id[pid]
-            same_color_owned = sum(
-                1 for p in state['properties']
-                if p['is_owned'] and p['colour_id'] == prop['colour_id']
-                and p['owner_index'] == self.agent_index
-            )
-            total_in_color = sum(
-                1 for p in state['properties']
-                if p['colour_id'] == prop['colour_id']
-            )
-            if same_color_owned + 1 == total_in_color:
-                monopoly_potential += 1
-        
-        # Normalize
-        features.extend([
-            cash_gain / 2000.0,
-            num_props_to / 5.0,
-            num_props_from / 5.0,
-            value_to / 5000.0,
-            value_from / 5000.0,
-            railroads_to / 4.0,
-            utilities_to / 2.0,
-            monopoly_potential, # higher weight -> dont normalize
-            offer['offer_to'].get('jail_cards', 0) / 2.0,
-        ])
-        while len(features) < 20:
-            features.append(0.0)
-        return np.array(features[:20], dtype=np.float32)
-    
-    def extract_property_features(self, state: Dict, property_id: int) -> np.ndarray:
-        '''
-        Extract features specific to a property.
-        Features include:
-        - Purchase price
-        - Colour group
-        - Type (property, utility, railroad)
-        - Monopoly progress
-        - Affordability
-        - Rent potential
-        '''
-        features = []
-        
-        prop = None
-        for p in state['properties']:
-            if p['property_id'] == property_id:
-                prop = p
+        # Position Property features - property at agent's position 
+        property_at_position = None
+        for prop in state['properties']:
+            if prop['position'] == agent_player['position']:
+                property_at_position = prop
                 break
         
-        if not prop:
-            return np.zeros(10, dtype=np.float32)
+        if property_at_position:
+            same_colour_owned = sum(
+                1 for p in state['properties']
+                if p['is_owned'] and p['colour_id'] == property_at_position['colour_id'] 
+                and p['owner_index'] == self.agent_index
+            )
+            total_in_group = sum(
+                1 for p in state['properties']
+                if p['colour_id'] == property_at_position['colour_id']
+            )
+            
+            features.extend([
+                property_at_position['purchase_price'] / 400.0,
+                property_at_position['colour_id'] / 8.0,
+                1.0 if property_at_position['type'] == 0 else 0.0,  # Property
+                1.0 if property_at_position['type'] == 1 else 0.0,  # Utility
+                1.0 if property_at_position['type'] == 2 else 0.0,  # Railroad
+                1.0 if property_at_position['is_owned'] else 0.0,
+                1.0 if property_at_position.get('owner_index', -1) == self.agent_index else 0.0,
+                same_colour_owned / max(total_in_group, 1),
+                (agent_player['cash'] - property_at_position['purchase_price']) / 2000.0,
+                property_at_position['current_rent'] / 2000.0,
+                property_at_position.get('rent0', 0) / 2000.0,
+                property_at_position.get('rent1', 0) / 2000.0,
+                property_at_position.get('rent2', 0) / 2000.0,
+                property_at_position.get('rent3', 0) / 2000.0,
+                property_at_position.get('rent4', 0) / 2000.0,
+                property_at_position.get('rentH', 0) / 2000.0,
+                property_at_position.get('houses', 0) / 4.0,
+                1.0 if property_at_position.get('hotel', False) else 0.0,
+                1.0 if property_at_position.get('mortgaged', False) else 0.0,
+                1.0 if property_at_position.get('is_monopoly', False) else 0.0,
+                1.0 if property_at_position.get('auctioned_this_turn', False) else 0.0,
+                property_at_position.get('house_price', 0) / 200.0,
+            ])
+        else:
+            features.extend([0.0] * 22)
         
-        # Monopoly progress
-        agent_player = state['players'][self.agent_index]
-        same_colour_owned = sum(
-            1 for p in state['properties']
-            if p['is_owned'] and p['colour_id'] == prop['colour_id'] and p['owner_index'] == self.agent_index
-        )
-        total_in_group = sum(
-            1 for p in state['properties']
-            if p['colour_id'] == prop['colour_id']
-        )
-        monopoly_progress = same_colour_owned / total_in_group
-        monopoly_complete = 1.0 if same_colour_owned == (total_in_group - 1)else 0.0
-
-        # Affordability
-        affordability = prop['purchase_price'] / max(agent_player['cash'], 1)
-        cash_after_purchase = (agent_player['cash'] - prop['purchase_price']) 
-
-        # Rent potential
-        rent_potential = prop['current_rent'] / max(agent_player['cash'], 1)
-
-        features.extend([
-            prop['purchase_price'] / 400.0,
-            prop['colour_id'] / 8.0,
-            1.0 if prop['type'] == 0 else 0.0, # Property
-            1.0 if prop['type'] == 1 else 0.0, # Utility
-            1.0 if prop['type'] == 2 else 0.0, # Railroad
-            monopoly_progress,
-            monopoly_complete,
-            affordability,
-            cash_after_purchase / 2000.0,
-            rent_potential,
-            1.0 if prop['auctioned_this_turn'] else 0.0,
-            prop['rent0'] / 2000.0,
-            prop['rent1'] / 2000.0, 
-            prop['rent2'] / 2000.0,
-            prop['rent3'] / 2000.0,
-            prop['rent4'] / 2000.0,
-            prop['rentH'] / 2000.0, 
-        ])
-        while len(features) < 20:
-            features.append(0.0)
-        return np.array(features[:20], dtype=np.float32)
-    
-    def extract_jail_features(self, state: Dict) -> np.ndarray:
-        features = []
-
-        agent_player = state['players'][self.agent_index]
-        if not agent_player['in_jail']:
-            return np.zeros(10, dtype=np.float32)
-        
-        # Properties owned
-        num_properties = sum(
-            1 for prop in state['properties']
-            if prop['is_owned'] and prop['owner_index'] == self.agent_index
-        )
-        # Monopoly count
-        num_monopolies = 0
-        checked_colors = set()
-        for prop in state['properties']:
-            if prop['is_owned'] and prop['owner_index'] == self.agent_index:
-                color_id = prop['colour_id']
-                if color_id in checked_colors:
+        # Trade offer features - only populated when evaluating a trade
+        if trade_offer:
+            cash_gain = trade_offer['offer_to']['cash'] - trade_offer['offer_from']['cash']
+            
+            props_to = trade_offer['offer_to'].get('property_ids', [])
+            props_from = trade_offer['offer_from'].get('property_ids', [])
+            
+            # Calculate property values
+            prop_values = {p['property_id']: p['purchase_price'] for p in state['properties']}
+            value_to = sum(prop_values.get(pid, 0) for pid in props_to)
+            value_from = sum(prop_values.get(pid, 0) for pid in props_from)
+            
+            # Property types in trade
+            props_by_id = {p['property_id']: p for p in state['properties']}
+            railroads_to = sum(1 for pid in props_to if props_by_id.get(pid, {}).get('type') == 2)
+            utilities_to = sum(1 for pid in props_to if props_by_id.get(pid, {}).get('type') == 1)
+            
+            # Monopoly completion potential
+            monopoly_potential = 0
+            for pid in props_to:
+                if pid not in props_by_id:
                     continue
-                checked_colors.add(prop['colour_id'])
-                same_color = [p for p in state['properties'] if p['colour_id'] == prop['colour_id']]
-                if all(p['is_owned'] and p['owner_index'] == self.agent_index for p in same_color):
-                    num_monopolies += 1
+                prop = props_by_id[pid]
+                same_color_owned = sum(
+                    1 for p in state['properties']
+                    if p['is_owned'] and p['colour_id'] == prop['colour_id']
+                    and p['owner_index'] == self.agent_index
+                )
+                total_in_color = sum(
+                    1 for p in state['properties']
+                    if p['colour_id'] == prop['colour_id']
+                )
+                if same_color_owned + 1 == total_in_color:
+                    monopoly_potential += 1
+            
+            features.extend([
+                cash_gain / 2000.0,
+                len(props_to) / 5.0,
+                len(props_from) / 5.0,
+                value_to / 5000.0,
+                value_from / 5000.0,
+                (value_to - value_from) / 5000.0,  # Net value
+                railroads_to / 4.0,
+                utilities_to / 2.0,
+                monopoly_potential / 3.0,
+                trade_offer['offer_to'].get('jail_cards', 0) / 2.0,
+                trade_offer['offer_from'].get('jail_cards', 0) / 2.0,
+                1.0 if cash_gain > 0 else 0.0,  # Receiving cash
+                1.0 if len(props_to) > len(props_from) else 0.0,  # Receiving more properties
+                1.0 if monopoly_potential > 0 else 0.0,  # Completes monopoly
+                (agent_player['cash'] + cash_gain) / 2000.0,  # Cash after trade
+            ])
+        else:
+            features.extend([0.0] * 15)
         
-        features.extend([
-            agent_player['turns_in_jail'] / 3.0,
-            1.0 if agent_player['jail_free_cards'] > 0 else 0.0,
-            agent_player['cash'] / 2000.0,
-            num_properties / 28.0,
-            num_monopolies / 9.0,
-            state['owed'] / 2000.0 # debt
-        ])
-        while len(features) < 20:
-            features.append(0.0)
-        return np.array(features[:20], dtype=np.float32)
-
-    def extract_trade_proposal_features(self, state: Dict) -> np.ndarray:
-        features = []
-
-        agent_player = state['players'][self.agent_index]
-        opponents = [p for p in state['players'] if p['player_index'] != self.agent_index and not p['retired']]
+        # House Building features
+        monopoly_count = 0
+        total_monopoly_value = 0
+        developable_properties = 0
+        max_houses_on_monopoly = 0
         
-        # Build color group analysis
         color_groups = {}
         for prop in state['properties']:
             color = prop['colour_id']
             if color not in color_groups:
-                color_groups[color] = {'total': 0, 'ours': 0, 'others': 0, 'owner_ids': set()}
-            
+                color_groups[color] = {'total': 0, 'ours': 0, 'props': []}
             color_groups[color]['total'] += 1
-            if prop['is_owned']:
-                if prop['owner_index'] == self.agent_index:
-                    color_groups[color]['ours'] += 1
-                else:
-                    color_groups[color]['others'] += 1
-                    color_groups[color]['owner_ids'].add(prop['owner_index'])
+            color_groups[color]['props'].append(prop)
+            if prop['is_owned'] and prop['owner_index'] == self.agent_index:
+                color_groups[color]['ours'] += 1
         
-        # Monopoly needs
-        one_away = sum(1 for info in color_groups.values() 
-                      if info['total'] - info['ours'] == 1 and info['others'] <= 1)
-        two_away = sum(1 for info in color_groups.values() 
-                      if info['total'] - info['ours'] == 2 and info['others'] <= 2)
-        blocked = sum(1 for info in color_groups.values() 
-                     if info['ours'] > 0 and info['others'] > 0)
-        
-        # Monopoly value    
-        max_monopoly_value = 0
         for color_id, info in color_groups.items():
-            if info['total'] - info['ours'] == 1:
-                color_props = [p for p in state['properties'] if p['colour_id'] == color_id]
-                if color_props:
-                    avg_rent = sum(p.get('rent0', 0) for p in color_props) / len(color_props)
-                    max_monopoly_value = max(max_monopoly_value, avg_rent * 2)
-
-        # Opponent threats and info
-        max_opp_threat = 0
-        total_blocking_value = 0
-        properties_we_block = 0
-        
-        for opp in opponents:
-            opp_id = opp['player_index']
-            opp_threats = 0
-            
-            for color_id, info in color_groups.items():
-                color_props = [p for p in state['properties'] if p['colour_id'] == color_id]
-                opp_owned = sum(1 for p in color_props if p['is_owned'] and p['owner_index'] == opp_id)
-                we_own = sum(1 for p in color_props if p['is_owned'] and p['owner_index'] == self.agent_index)
-                
-                if opp_owned == len(color_props) - 1:
-                    opp_threats += 1
-                    if we_own == 1:
-                        properties_we_block += 1
-                        avg_rent = sum(p.get('rent0', 0) for p in color_props) / len(color_props)
-                        total_blocking_value += avg_rent * 2
-            
-            max_opp_threat = max(max_opp_threat, opp_threats)
-
-        # Game state features
-        total_owned = sum(1 for p in state['properties'] if p['is_owned'])
-        total_houses = sum(p['houses'] for p in state['properties'])
-        unowned_valuable = sum(1 for p in state['properties'] 
-                              if not p['is_owned'] and p['purchase_price'] > 150)
+            if info['ours'] == info['total']:  # We have a monopoly
+                monopoly_count += 1
+                for prop in info['props']:
+                    total_monopoly_value += prop['purchase_price']
+                    if prop['houses'] < 5:
+                        developable_properties += 1
+                    max_houses_on_monopoly = max(max_houses_on_monopoly, prop['houses'])
         
         features.extend([
-            one_away / 8.0,
-            two_away / 8.0,
-            blocked / 8.0,
-            max_monopoly_value / 200.0,
-            sum(1 for info in color_groups.values() if info['ours'] == info['total']) / 8.0,  # Complete monopolies
-            sum(info['ours'] for info in color_groups.values()) / 28.0,  # Total ownership
-            max_opp_threat / 8.0,
-            properties_we_block / 8.0,
-            total_blocking_value / 1000.0,
-            total_owned / 28.0,
-            total_houses / 32.0,
-            unowned_valuable / 28.0,
-            state['houses_remaining'] / 32.0,
-            state['hotels_remaining'] / 12.0,
+            monopoly_count / 8.0,
+            total_monopoly_value / 10000.0,
+            developable_properties / 12.0,
+            max_houses_on_monopoly / 5.0,
+            1.0 if state['houses_remaining'] > 0 else 0.0,
         ])
-        while len(features) < 20:
+        while len(features) < 70:
             features.append(0.0)
-        return np.array(features[:20], dtype=np.float32)
+        
+        return np.array(features[:70], dtype=np.float32)
+    
 
     def construct_trade_offer(self, state: Dict, high_value_properties: List[Dict]) -> Optional[Dict]:
         agent_player = state['players'][self.agent_index]
@@ -455,6 +328,76 @@ class NEATAgent:
     def agent_turn(self, state) -> Dict:
         agent_player = state['players'][self.agent_index]
         
+        features = self.extract_features(state)
+        output = self.net.activate(features)
+        ''' 
+        output[0] -> buy property score, 
+        output[1] -> bid score, 
+        output[2] -> trade acceptance score, 
+        output[3] = jail use card, output[4] = pay fine, output[5] = roll doubles,
+        output[6] = trade proposal score, 
+        output[7] = build houses score, 
+        output[8-35] = property scores
+
+        '''
+        highest_score = 0.0
+        for score in output[0:8]:
+            if score > highest_score:
+                highest_score = score
+        
+        # Jail Decisions:
+        if highest_score == output[3] and output[3] > 0.5:
+            return {'action_type': 10}  # ACTION_USE_JAIL_CARD
+        elif highest_score == output[4] and output[4] > 0.5:
+            return {'action_type': 9}  # ACTION_PAY_JAIL_FINE
+        elif highest_score == output[5] and output[5] > 0.5:
+            return {'action_type': 11}  # ACTION_JAIL_ROLL_DOUBLE
+
+        # Buying Property
+        if highest_score == output[0] and output[0] > 0.5:
+            #print("Deciding to buy property with score:", output[0])
+            return{
+                'action_type': 0,  # ACTION_LANDED_PROPERTY
+                'buying_property': True
+            }
+        elif highest_score == output[0] and output[0] <= 0.5:
+            print("Deciding not to buy property with score:", output[0])
+            return{
+                'action_type': 0,  # ACTION_LANDED_PROPERTY
+                'buying_property': False
+            }
+
+        # Building Houses:
+        if highest_score == output[7] and output[7] > 0.7:
+            #print("Deciding to build houses with score:", output[7])
+            return {
+                'action_type': 6,  # ACTION_BUILD_HOUSES
+                'property_position': np.argmax(output[8:36])  # Choose property with highest score
+            }
+
+        # Trade Proposal
+        if highest_score == output[6] and highest_score > 0.5:
+            property_outputs = output[8:36]
+            high_value_properties = []
+            for i, score in enumerate(property_outputs):
+                if score > 0.75 and i < len(state['properties']):
+                    prop = state['properties'][i]
+                    high_value_properties.append({
+                        'property_id': prop['property_id'],
+                        'position': prop['position'],
+                        'owner': prop['owner_index'] if prop['is_owned'] else None,
+                        'score': score
+                    })
+            if high_value_properties:
+                trade_offer = self.construct_trade_offer(state, high_value_properties)
+                if trade_offer:
+                    print("Proposing trade offer:", trade_offer)
+                    return trade_offer
+        
+        return {'action_type': 8 } # ACTION_END_TURN
+
+
+        '''
         # Handle jail
         if agent_player['in_jail']:
             features = np.concatenate([self.extract_features(state), self.extract_jail_features(state)])
@@ -519,9 +462,8 @@ class NEATAgent:
                 if trade_offer:
                     print("Proposing trade offer:", trade_offer)
                     return trade_offer
-        
-        return {'action_type': 8 } # ACTION_END_TURN
-    
+                    '''
+            
     def auction(self, state: Dict, auction: Dict) -> Dict:
         agent_player = state['players'][self.agent_index]
         property_id = auction['property_id']
@@ -536,10 +478,10 @@ class NEATAgent:
         if not prop:
             return {'action_type': 8}  # END_TURN (no bid)
         
-        features = np.concatenate([self.extract_features(state), self.extract_property_features(state, property_id)])
+        features = self.extract_features(state)
         output = self.net.activate(features)
         
-        # Bid based on neural network output and property value
+        # Bid based on neural network output and property value (output[1])
         bid_multiplier = output[1]
         max_bid = int(prop['purchase_price'] * bid_multiplier * 0.8)
         cash_limit = int(agent_player['cash'] * 0.3)
@@ -556,7 +498,8 @@ class NEATAgent:
     def trade_offer(self, state: Dict, offer: Dict) -> Dict:
         # Respond to trade offer
         # Use neural network to evaluate trade
-        features = np.concatenate([self.extract_features(state), self.extract_trade_features(state, offer)])
+
+        features = self.extract_features(state, trade_offer=offer)
         output = self.net.activate(features)
         
         # output[2] -> trade acceptance score

@@ -139,7 +139,7 @@ class NeatTraining:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=30,
+                timeout=60,
             )
             print("Return code:", result.returncode)
 
@@ -147,6 +147,7 @@ class NeatTraining:
             if result.returncode == 0:
                 lines = result.stdout.strip().split('\n')
                 winner = -1
+                turns = 0
                 for line in lines:
                     if line.startswith('{') and 'winner' in line:
                         game_result = json.loads(line)
