@@ -56,6 +56,10 @@ void Engine::init_setup() {
         player.position = 0;
         player.retired = false;
 
+        player.previous_offer = {};
+        player.trades_offered = 0;
+        player.offer_accepted = false;
+
         player.in_jail = false;
         player.turns_in_jail = 0;
         player.jail_free_cards = 0;
