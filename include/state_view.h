@@ -2,25 +2,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// State for each player
-typedef struct {
-    uint32_t player_index;
-    uint32_t cash;
-    uint32_t position;
-    bool retired;
-
-    // Jail-related
-    bool in_jail;
-    uint32_t turns_in_jail;
-    uint32_t jail_free_cards;
-    uint32_t double_rolls;
-    bool jail_rolled_this_turn;
-
-    // Not used in engine, for agent learning only
-    uint8_t railroads_owned;
-    uint8_t utilities_owned;
-} PlayerView;
-
 typedef enum PropertyType { PROPERTY, UTILITY, RAILROAD }PropertyType;
 
 // State for each property
@@ -66,6 +47,29 @@ typedef struct {
     uint32_t property_id;
     uint32_t current_bid;
 } AuctionView;
+
+// State for each player
+typedef struct {
+    uint32_t player_index;
+    uint32_t cash;
+    uint32_t position;
+    bool retired;
+
+    uint32_t trades_offered;
+    TradeOffer previous_offer;
+    bool offer_accepted;
+
+    // Jail-related
+    bool in_jail;
+    uint32_t turns_in_jail;
+    uint32_t jail_free_cards;
+    uint32_t double_rolls;
+    bool jail_rolled_this_turn;
+
+    // Not used in engine, for agent learning only
+    uint8_t railroads_owned;
+    uint8_t utilities_owned;
+} PlayerView;
 
 // Total game state
 typedef struct {

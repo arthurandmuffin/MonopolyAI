@@ -58,6 +58,9 @@ GameResult Engine::run() {
             while (true) {
                 Action agent_action = agent.agent_turn(&this->state_);
                 if (this->handle_action(player, agent_action)) {
+                    player.trades_offered = 0;
+                    player.previous_offer = {};
+                    player.offer_accepted = false;
                     break;
                 }
                 if (player.retired) {
@@ -130,6 +133,15 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         TradeDetail& assets_offered = offer.offer_from;
         TradeDetail& assets_demanded = offer.offer_to;
 
+        player.trades_offered++;
+        player.previous_offer = offer;
+
+        if (player.trades_offered >= 10) {
+            // max 10 offers per turn
+            this->penalize(player);
+            return true;
+        }
+
         if (player_to_offer.retired) {
             // cant offer a trade w/ player out of game
             this->penalize(player);
@@ -155,6 +167,9 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
 
         if (trade_response.trade_response) {
             this->trade(player, assets_offered, player_to_offer, assets_demanded);
+            player.offer_accepted = true;
+        } else {
+            player.offer_accepted = false;
         }
 
         break;
