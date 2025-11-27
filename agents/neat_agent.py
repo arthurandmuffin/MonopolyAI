@@ -49,7 +49,7 @@ class NEATAgent:
         self.agent_index = agent_index
         self.seed = seed
     
-    def extract_features(self, state: Dict, trade_offer: Optional[Dict] = None) -> np.ndarray:
+    def extract_features(self, state: Dict, trade_offer: Optional[Dict] = None, action: Optional[str] = None) -> np.ndarray:
         """
         Extract comprehensive game state features.
         Returns 70-dimensional feature vector.
@@ -71,6 +71,9 @@ class NEATAgent:
         
         # Player features
         features.extend([
+            1.0 if action == 'trade_offer' else 0.0,
+            1.0 if action == 'auction' else 0.0,
+            agent_player['player_index'] / 3.0,
             self.agent_index / 3.0,  # For 4 players: indices 0,1,2,3 → 0.0, 0.33, 0.67, 1.0
             agent_player['cash'] / 2000.0,  
             agent_player['position'] / 40.0,  
@@ -80,6 +83,7 @@ class NEATAgent:
             agent_player['railroads_owned'] / 4.0,
             agent_player['utilities_owned'] / 2.0,
         ])
+
         
         # Property ownership by color
         color_counts = [0] * 9
@@ -189,8 +193,7 @@ class NEATAgent:
             
             # Calculate property values
             prop_values = {p['property_id']: p['purchase_price'] for p in state['properties']}
-            value_to = sum(prop_values.get(pid, 0) for pid in props_to)
-            value_from = sum(prop_values.get(pid, 0) for pid in props_from)
+
             
             # Property types in trade
             props_by_id = {p['property_id']: p for p in state['properties']}
@@ -219,9 +222,6 @@ class NEATAgent:
                 cash_gain / 2000.0,
                 len(props_to) / 5.0,
                 len(props_from) / 5.0,
-                value_to / 5000.0,
-                value_from / 5000.0,
-                (value_to - value_from) / 5000.0,  # Net value
                 railroads_to / 4.0,
                 utilities_to / 2.0,
                 monopoly_potential / 3.0,
@@ -235,6 +235,20 @@ class NEATAgent:
         else:
             features.extend([0.0] * 15)
         
+        # Trade proposal features
+        if agent_player.get('previous_offer') is not None:
+            features.extend([
+                agent_player['previous_offer'].get('offer_from', {}).get('cash', 0) / 2000.0,
+                agent_player['previous_offer'].get('offer_to', {}).get('cash', 0) / 2000.0,
+                len(agent_player['previous_offer'].get('offer_from', {}).get('property_ids', [])) / 5.0,
+                len(agent_player['previous_offer'].get('offer_to', {}).get('property_ids', [])) / 5.0,
+                agent_player['previous_offer'].get('offer_from', {}).get('jail_cards', 0) / 2.0,
+                agent_player['previous_offer'].get('offer_to', {}).get('jail_cards', 0) / 2.0,
+                1.0 if agent_player['previous_offer'] else 0.0,
+                agent_player['trades_offered'] / 10.0,
+                agent_player['previous_offer'].get('player_to_offered', -1) / 3.0,
+            ])
+
         # House Building features
         monopoly_count = 0
         total_monopoly_value = 0
@@ -267,10 +281,10 @@ class NEATAgent:
             max_houses_on_monopoly / 5.0,
             1.0 if state['houses_remaining'] > 0 else 0.0,
         ])
-        while len(features) < 70:
+        while len(features) < 80:
             features.append(0.0)
         
-        return np.array(features[:70], dtype=np.float32)
+        return np.array(features[:80], dtype=np.float32)
     
 
     def construct_trade_offer(self, state: Dict, high_value_properties: List[Dict]) -> Optional[Dict]:
@@ -479,7 +493,7 @@ class NEATAgent:
         if not prop:
             return {'action_type': 8}  # END_TURN (no bid)
         
-        features = self.extract_features(state)
+        features = self.extract_features(state, action='auction')
         output = self.net.activate(features)
         
         # Bid based on neural network output and property value (output[1])
@@ -500,13 +514,12 @@ class NEATAgent:
         # Respond to trade offer
         # Use neural network to evaluate trade
 
-        features = self.extract_features(state, trade_offer=offer)
+        features = self.extract_features(state, trade_offer=offer, action='trade_offer')
         output = self.net.activate(features)
         
         # output[2] -> trade acceptance score
-        cash_gain = offer['offer_to']['cash'] - offer['offer_from']['cash']
-        accept = output[2] > 0.7 and cash_gain > 0
-        print("Trade offer decision with acceptance score:", output[2], "cash gain:", cash_gain, "accept:", accept)
+        accept = output[2] > 0.75
+        print("Trade offer decision with acceptance score:", output[2], "accept:", accept)
         return {
             'action_type': 2,  # ACTION_TRADE_RESPONSE
             'trade_response': accept
