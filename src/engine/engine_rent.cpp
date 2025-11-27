@@ -80,7 +80,7 @@ uint32_t Engine::get_utility_rent(PlayerView& player, const int utilityIndex, bo
 void Engine::update_rent(PropertyView& property) {
     const PropertyInfo* property_info = this->board_.propertyByTile(property.position);
 
-    if (!property.is_owned) {
+    if (!property.is_owned || !property.mortgaged) {
         property.current_rent = 0;
         return;
     }

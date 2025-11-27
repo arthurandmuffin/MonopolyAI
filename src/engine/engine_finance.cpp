@@ -500,6 +500,8 @@ void Engine::auction(PropertyView* property) {
         }
 
         if (highest_bidder < 0 || auction.current_bid == 0) {
+            property->mortgaged = false;
+            property->current_rent = 0;
             return;
         }
 
