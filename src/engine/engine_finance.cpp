@@ -557,6 +557,7 @@ void Engine::bankrupt(PlayerView& player, PlayerView* debtor) {
     if (debtor) {
         for (auto* asset : assets) {
             asset->owner_index = debtor->player_index;
+            this->update_rent(*asset);
         }
     } else {
         for (auto* asset: assets) {
