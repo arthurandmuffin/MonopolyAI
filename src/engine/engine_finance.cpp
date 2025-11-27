@@ -372,6 +372,7 @@ void Engine::unmortgage(PlayerView& player, PropertyView* property) {
 void Engine::mortgage(PlayerView& player, PropertyView* property) {
     assert(!property->mortgaged);
     assert(property->owner_index == player.player_index);
+    property->mortgaged = true;
     switch (property->type)
     {
     case (PropertyType::PROPERTY): {
