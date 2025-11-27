@@ -317,9 +317,26 @@ class NEATAgent:
         if best_opponent is None:
             return None
         
-        # Create trade offer
-        our_property_ids = [p['property_id'] for p in our_properties]
-        their_property_ids = [p['property_id'] for p in offers_by_owner[best_opponent]]
+        # Get property values for sorting
+        prop_values = {p['property_id']: p['purchase_price'] for p in state['properties']}
+
+        # Sort and select top 3 by value
+        our_property_ids = sorted(
+            [p['property_id'] for p in our_properties],
+            key=lambda pid: prop_values.get(pid, 0),
+            reverse=True
+        )[:3]
+
+        their_property_ids = sorted(
+            [p['property_id'] for p in offers_by_owner[best_opponent]],
+            key=lambda pid: prop_values.get(pid, 0),
+            reverse=True
+        )[:3]
+
+        # Pad with None if fewer than 3
+        our_property_ids = (our_property_ids + [None]*3)[:3]
+        their_property_ids = (their_property_ids + [None]*3)[:3]
+
         trade_offer = {
             'action_type': 1,  # ACTION_TRADE
             'trade_offer': {
@@ -394,7 +411,7 @@ class NEATAgent:
             property_outputs = output[8:36]
             high_value_properties = []
             for i, score in enumerate(property_outputs):
-                if score > 0.75 and i < len(state['properties']) and len(high_value_properties) < 3:
+                if score > 0.75 and i < len(state['properties']):
                     prop = state['properties'][i]
                     high_value_properties.append({
                         'property_id': prop['property_id'],
@@ -402,12 +419,10 @@ class NEATAgent:
                         'owner': prop['owner_index'] if prop['is_owned'] else None,
                         'score': score
                     })
-                    while len(high_value_properties) < 3:
-                        high_value_properties.append({})
             if high_value_properties:
                 trade_offer = self.construct_trade_offer(state, high_value_properties)
                 if trade_offer:
-                    #print("Proposing trade offer:", trade_offer)
+                    print("Proposing trade offer:", trade_offer)
                     return trade_offer
         
         return {'action_type': 8 } # ACTION_END_TURN
@@ -520,7 +535,7 @@ class NEATAgent:
         
         # output[2] -> trade acceptance score
         accept = output[2] > 0.75
-        #print("Trade offer decision with acceptance score:", output[2], "accept:", accept)
+        print("Trade offer decision with acceptance score:", output[2], "accept:", accept)
         return {
             'action_type': 2,  # ACTION_TRADE_RESPONSE
             'trade_response': accept
