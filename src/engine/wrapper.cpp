@@ -88,6 +88,8 @@ std::string to_json(const PropertyView& pr) {
 
     oss << "\"current_rent\":"  << pr.current_rent;
 
+    oss << "\"is_monopoly\":"  << pr.is_monopoly;
+
     oss << '}';
     return oss.str();
 }
