@@ -86,9 +86,8 @@ std::string to_json(const PropertyView& pr) {
     oss << "\"rent4\":"         << pr.rent4         << ',';
     oss << "\"rentH\":"         << pr.rentH         << ',';
 
-    oss << "\"current_rent\":"  << pr.current_rent;
-
-    oss << "\"is_monopoly\":"  << pr.is_monopoly;
+    oss << "\"current_rent\":"  << pr.current_rent  << ',';  // ADD COMMA HERE!
+    oss << "\"is_monopoly\":"   << (pr.is_monopoly ? "true" : "false");  // Convert to boolean string
 
     oss << '}';
     return oss.str();

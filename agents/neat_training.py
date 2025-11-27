@@ -280,12 +280,17 @@ class NeatTraining:
         win_rate = wins / valid_games if valid_games > 0 else 0
         avg_score = total_score / self.num_games
         avg_penalty = total_penalty / self.num_games
+        # Calculate avg_opponent_score
+        if 'player_scores' in stats and isinstance(stats['player_scores'], list) and len(stats['player_scores']) > 1:
+            avg_opponent_score = sum(stats['player_scores'][1:]) / (len(stats['player_scores']) - 1)
+        else:
+            avg_opponent_score = 0
 
         # Win rate weighted most heavily, longer games when winning are better
         if win_rate > 0:
-            fitness = win_rate * 1000 - avg_penalty / 10 + min(avg_score / 100, 90)
+            fitness = win_rate * 1000 - avg_penalty / 10 + (avg_score - avg_opponent_score) / 100
         else:
-            fitness = min(avg_score / 100, 90) - avg_penalty / 10
+            fitness = (avg_score - avg_opponent_score) / 100 - avg_penalty / 10
         return fitness
     
     def evaluate_tournament_match(self, genomes: List[Tuple[int, object]]) -> Dict[int, float]:

@@ -394,7 +394,7 @@ class NEATAgent:
             property_outputs = output[8:36]
             high_value_properties = []
             for i, score in enumerate(property_outputs):
-                if score > 0.75 and i < len(state['properties']):
+                if score > 0.75 and i < len(state['properties']) and len(high_value_properties) < 3:
                     prop = state['properties'][i]
                     high_value_properties.append({
                         'property_id': prop['property_id'],
@@ -402,10 +402,12 @@ class NEATAgent:
                         'owner': prop['owner_index'] if prop['is_owned'] else None,
                         'score': score
                     })
+                    while len(high_value_properties) < 3:
+                        high_value_properties.append({})
             if high_value_properties:
                 trade_offer = self.construct_trade_offer(state, high_value_properties)
                 if trade_offer:
-                    print("Proposing trade offer:", trade_offer)
+                    #print("Proposing trade offer:", trade_offer)
                     return trade_offer
         
         return {'action_type': 8 } # ACTION_END_TURN
@@ -518,7 +520,7 @@ class NEATAgent:
         
         # output[2] -> trade acceptance score
         accept = output[2] > 0.75
-        print("Trade offer decision with acceptance score:", output[2], "accept:", accept)
+        #print("Trade offer decision with acceptance score:", output[2], "accept:", accept)
         return {
             'action_type': 2,  # ACTION_TRADE_RESPONSE
             'trade_response': accept
