@@ -476,6 +476,7 @@ void Engine::auction(PropertyView* property) {
                     continue;
                 }
 
+                this->state_.current_player_index = this->players_[i].player_index;
                 Action action = this->agent_adapters_[i].auction(&this->state_, &auction);
                 if (action.type != ACTION_AUCTION_BID) {
                     this->penalize(this->players_[i]);

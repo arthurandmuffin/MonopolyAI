@@ -56,6 +56,7 @@ GameResult Engine::run() {
             uint32_t index = player.player_index;
             AgentAdapter& agent = this->agent_adapters_[index];
             while (true) {
+                this->state_.current_player_index = player.player_index;
                 Action agent_action = agent.agent_turn(&this->state_);
                 if (this->handle_action(player, agent_action)) {
                     player.trades_offered = 0;
@@ -159,6 +160,7 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
             return true;
         }
 
+        this->state_.current_player_index = this->players_[player_index_to_offer].player_index;
         Action trade_response = this->agent_adapters_[player_index_to_offer].trade_offer(&this->state_, &offer);
         if (trade_response.type != ACTION_TRADE_RESPONSE) {
             this->penalize(player_to_offer);
