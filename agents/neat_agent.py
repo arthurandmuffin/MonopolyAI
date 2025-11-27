@@ -236,7 +236,7 @@ class NEATAgent:
             features.extend([0.0] * 15)
         
         # Trade proposal features
-        if agent_player.get('previous_offer') is not None:
+        if agent_player.get('trades_offered', 0) > 0:
             features.extend([
                 agent_player['previous_offer'].get('offer_from', {}).get('cash', 0) / 2000.0,
                 agent_player['previous_offer'].get('offer_to', {}).get('cash', 0) / 2000.0,
@@ -244,7 +244,6 @@ class NEATAgent:
                 len(agent_player['previous_offer'].get('offer_to', {}).get('property_ids', [])) / 5.0,
                 agent_player['previous_offer'].get('offer_from', {}).get('jail_cards', 0) / 2.0,
                 agent_player['previous_offer'].get('offer_to', {}).get('jail_cards', 0) / 2.0,
-                1.0 if agent_player['previous_offer'] else 0.0,
                 agent_player['trades_offered'] / 10.0,
                 agent_player['previous_offer'].get('player_to_offered', -1) / 3.0,
             ])

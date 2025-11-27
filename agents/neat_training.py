@@ -209,7 +209,7 @@ class NeatTraining:
             print("Running command:", ' '.join(cmd))
             result = subprocess.run(
                 cmd,
-                stdout = None,
+                capture_output=True,
                 text=True,
                 timeout=60,
             )
