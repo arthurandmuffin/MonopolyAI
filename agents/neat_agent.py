@@ -71,6 +71,7 @@ class NEATAgent:
         
         # Player features
         features.extend([
+            self.agent_index / 3.0,  # For 4 players: indices 0,1,2,3 → 0.0, 0.33, 0.67, 1.0
             agent_player['cash'] / 2000.0,  
             agent_player['position'] / 40.0,  
             1.0 if agent_player['in_jail'] else 0.0,
