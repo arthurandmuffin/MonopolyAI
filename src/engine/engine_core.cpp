@@ -34,6 +34,11 @@ GameResult Engine::run() {
                 continue;
             }
 
+            if (player.turns_in_jail == 2) {
+                player.turns_in_jail = 0;
+                player.in_jail = false;
+            }
+
             if (!this->in_jail(player)) {
                 RollResult dice_roll = this->dice_roll();
                 bool in_jail = update_position(player, dice_roll);
@@ -44,6 +49,8 @@ GameResult Engine::run() {
                 if (player.retired) {
                     continue;
                 }
+            } else {
+                player.turns_in_jail++;
             }
 
             uint32_t index = player.player_index;
@@ -413,7 +420,7 @@ void Engine::jail(PlayerView& player) {
 }
 
 bool Engine::in_jail(PlayerView& player) {
-    return player.position == static_cast<uint32_t>(this->board_.jailPosition());
+    return player.in_jail;
 }
 
 void Engine::use_jail_free_card(PlayerView& player) {
