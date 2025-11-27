@@ -55,7 +55,6 @@ GameResult Engine::run() {
 
             uint32_t index = player.player_index;
             AgentAdapter& agent = this->agent_adapters_[index];
-            bool turn_end = false;
             while (true) {
                 Action agent_action = agent.agent_turn(&this->state_);
                 if (this->handle_action(player, agent_action)) {
@@ -108,7 +107,10 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
                 this->buy_property(player, property);
             }
         } else {
-            if (index != -1) {
+            if (index == -1) {
+                this->penalize(player);
+                return true;
+            }else {
                 PropertyView* property = &this->properties_[index];
                 if (property->auctioned_this_turn) {
                     this->penalize(player);
@@ -130,6 +132,12 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
 
         if (player_to_offer.retired) {
             // cant offer a trade w/ player out of game
+            this->penalize(player);
+            return true;
+        }
+
+        if (player.player_index == player_to_offer.player_index) {
+            // cant trade w/ yourself
             this->penalize(player);
             return true;
         }
