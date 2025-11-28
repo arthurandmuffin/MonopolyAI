@@ -68,7 +68,7 @@ private:
     bool in_jail(PlayerView& player);
     void use_jail_free_card(PlayerView& player);
 
-    void penalize(PlayerView& player);
+    void penalize(PlayerView& player, const std::string& reason);
 
     std::vector<double> get_player_scores();
     double networth(PlayerView& player);

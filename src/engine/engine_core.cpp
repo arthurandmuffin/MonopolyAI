@@ -100,24 +100,24 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         int index = this->position_to_properties_[player.position];
         if (player_action.buying_property) {
             if (index == -1) {
-                this->penalize(player);
+                this->penalize(player, "purchase attempt of non-property");
                 return true;
             } else {
                 PropertyView* property = &this->properties_[index];
                 if (property->owner_index != -1) {
-                    this->penalize(player);
+                    this->penalize(player, "purchase attempt of owned property");
                     return true;
                 }
                 this->buy_property(player, property);
             }
         } else {
             if (index == -1) {
-                this->penalize(player);
+                this->penalize(player, "auction attempt of non-property");
                 return true;
             }else {
                 PropertyView* property = &this->properties_[index];
                 if (property->auctioned_this_turn) {
-                    this->penalize(player);
+                    this->penalize(player, "attempt of multi-auction of same property");
                     property->auctioned_this_turn = false;
                     return true;
                 }
@@ -139,31 +139,31 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
 
         if (player.trades_offered >= 10) {
             // max 10 offers per turn
-            this->penalize(player);
+            this->penalize(player, "exceed trade offer limit of 10");
             return true;
         }
 
         if (player_to_offer.retired) {
             // cant offer a trade w/ player out of game
-            this->penalize(player);
+            this->penalize(player, "trade attempt with retired player");
             return true;
         }
 
         if (player.player_index == player_to_offer.player_index) {
             // cant trade w/ yourself
-            this->penalize(player);
+            this->penalize(player, "trade attempt with oneself");
             return true;
         }
 
         if (!this->legal_trade_detail(player, assets_offered) || !this->legal_trade_detail(player_to_offer, assets_demanded)) {
-            this->penalize(player);
+            this->penalize(player, "illegal trade attempt");
             return true;
         }
 
         this->state_.current_player_index = this->players_[player_index_to_offer].player_index;
         Action trade_response = this->agent_adapters_[player_index_to_offer].trade_offer(&this->state_, &offer);
         if (trade_response.type != ACTION_TRADE_RESPONSE) {
-            this->penalize(player_to_offer);
+            this->penalize(player_to_offer, "incoherent response to trade request");
             return true;
         }
 
@@ -178,20 +178,20 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
     }
     case (ActionType::ACTION_TRADE_RESPONSE):
         // Should not be an action player sends on their own, must be prompted
-        this->penalize(player);
+        this->penalize(player, "non-prompted trade response");
         return true;
     case (ActionType::ACTION_MORTGAGE): {
         uint32_t position = player_action.property_position;
         int index = this->position_to_properties_[position];
         if (index == -1) {
             // not a property
-            this->penalize(player);
+            this->penalize(player, "mortgage attempt of non-property");
             return true;
         }
 
         PropertyView* property = &this->properties_[index];
         if (property->owner_index != player.player_index || property->houses > 0 || property->mortgaged) {
-            this->penalize(player);
+            this->penalize(player, "mortgage attempt of non-belonging property");
             return true;
         }
 
@@ -203,18 +203,18 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         int index = this->position_to_properties_[position];
         if (index == -1) {
             // not a property
-            this->penalize(player);
+            this->penalize(player, "unmortgage attempt of non-property");
             return true;
         }
 
         PropertyView* property = &this->properties_[index];
         if (property->owner_index != player.player_index || !property->mortgaged) {
-            this->penalize(player);
+            this->penalize(player, "unmortgage attempt of non-owned/non-mortgaged property");
             return true;
         }
 
         if (player.cash <= (property->purchase_price / 2) * 1.1) {
-            this->penalize(player);
+            this->penalize(player, "unmortgage attempt without sufficient cash");
             return true;
         }
 
@@ -225,14 +225,14 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         uint32_t position = player_action.property_position;
         int index = this->position_to_properties_[position];
         if (index == -1) {
-            this->penalize(player);
+            this->penalize(player, "develop attempt of non-property");
             return true;
         }
 
         PropertyView* property = &this->properties_[index];
         if (property->owner_index != player.player_index || property->houses == 5) {
             // Does not own property / property already fully developed
-            this->penalize(player);
+            this->penalize(player, "develop attempt of non-belonging/fully-developed property");
             return true;
         }
 
@@ -240,13 +240,13 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
 
         if (!this->is_monopoly(property_info, true)) {
             // Not a monopoly, cant build
-            this->penalize(player);
+            this->penalize(player, "develop attempt without monopoly");
             return true;
         }
 
         if (player.cash < property->house_price) {
             // cannot afford a house
-            this->penalize(player);
+            this->penalize(player, "develop attempt without sufficient cash");
             return true;
         }
 
@@ -257,14 +257,14 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
         uint32_t position = player_action.property_position;
         int index = this->position_to_properties_[position];
         if (index == -1) {
-            this->penalize(player);
+            this->penalize(player, "undevelop attempt of non-property");
             return true;
         }
 
         PropertyView* property = &this->properties_[index];
         if (property->owner_index != player.player_index || property->houses == 0) {
             // Does not own property / no houses on property
-            this->penalize(player);
+            this->penalize(player, "undevelop attempt of non-belonging/undeveloped property");
             return true;
         }
 
@@ -273,18 +273,18 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
     }
     case (ActionType::ACTION_AUCTION_BID):
         // Should not be an action player sends on their own, must be prompted
-        this->penalize(player);
+        this->penalize(player, "non-prompted bid response");
         return true;
     case (ActionType::ACTION_END_TURN):
         return true;
     case (ActionType::ACTION_PAY_JAIL_FINE): {
         if (!this->in_jail(player)) {
-            this->penalize(player);
+            this->penalize(player, "pay jail-fine attempt, not in jail");
             return true;
         }
 
         if (player.cash < 50) {
-            this->penalize(player);
+            this->penalize(player, "pay jail-fine attempt with insufficient cash");
             return true;
         }
 
@@ -300,12 +300,12 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
     }
     case (ActionType::ACTION_USE_JAIL_CARD): {
         if (!this->in_jail(player)) {
-            this->penalize(player);
+            this->penalize(player, "use jail-card attempt, not in jail");
             return true;
         }
 
         if (player.jail_free_cards == 0) {
-            this->penalize(player);
+            this->penalize(player, "use jail-card attempt, none in possession");
             return true;
         }
 
@@ -323,7 +323,7 @@ bool Engine::handle_action(PlayerView& player, Action player_action) {
     }
     case (ActionType::ACTION_JAIL_ROLL_DOUBLE): {
         if (!this->in_jail(player) || player.jail_rolled_this_turn) {
-            this->penalize(player);
+            this->penalize(player, "jail-roll attempt, not in jail / already rolled");
             return true;
         }
         
@@ -433,8 +433,9 @@ void Engine::handle_position(PlayerView& player) {
     }
 }
 
-void Engine::penalize(PlayerView& player) {
+void Engine::penalize(PlayerView& player, const std::string& reason) {
     this->penalties_[player.player_index] += 0.5;
+    std::cout << reason << "\n";
 }
 
 void Engine::jail(PlayerView& player) {

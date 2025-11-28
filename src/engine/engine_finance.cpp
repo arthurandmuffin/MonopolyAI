@@ -480,7 +480,7 @@ void Engine::auction(PropertyView* property) {
                 this->state_.current_player_index = this->players_[i].player_index;
                 Action action = this->agent_adapters_[i].auction(&this->state_, &auction);
                 if (action.type != ACTION_AUCTION_BID) {
-                    this->penalize(this->players_[i]);
+                    this->penalize(this->players_[i], "non-bid response");
                     continue;
                 }
 
