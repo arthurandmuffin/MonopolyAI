@@ -68,7 +68,7 @@ struct Board {
     std::array<int8_t,40> tile_railroad_index{};
     std::array<int8_t,40> tile_utility_index{};
 
-    std::array<ColourGroup, 8> colour_to_tiles{};
+    std::array<ColourGroup, 9> colour_to_tiles{};
     std::array<int8_t, 4> railroad_positions{}; // TODO in cpp
     std::array<int8_t, 2> utility_positions{}; // TODO in cpp
 

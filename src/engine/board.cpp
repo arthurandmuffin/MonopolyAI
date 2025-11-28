@@ -163,8 +163,8 @@ constexpr std::array<int8_t,40> makeTileUtilityIndex() {
     return tile_utility_index;
 }
 
-constexpr std::array<ColourGroup, 8> makeColourToTiles() {
-    std::array<ColourGroup, 8> result{};
+constexpr std::array<ColourGroup, 9> makeColourToTiles() {
+    std::array<ColourGroup, 9> result{};
     for (const auto& tile : AllTiles) {
         if (tile.type == TileType::Property) {
             auto c = static_cast<size_t>(tile.colour);
