@@ -362,36 +362,36 @@ class NEATAgent:
         features = self.extract_features(state)
         output = self.net.activate(features)
         ''' 
-        output[0] -> buy property score, 
-        output[1] -> bid score, 
-        output[2] -> trade acceptance score, 
-        output[3] = jail use card, output[4] = pay fine, output[5] = roll doubles,
-        output[6] = trade proposal score, 
-        output[7] = build houses score, 
-        output[8-35] = property scores
+        output[0] -> buy property, 
+        output[1] -> do not buy property,
+        output[2] -> bid score, 
+        output[3] -> trade acceptance score, 
+        output[4] = jail use card, output[5] = pay fine, output[6] = roll doubles,
+        output[7] = trade proposal score, 
+        output[8] = build houses score, 
+        output[9-36] = property scores
 
         '''
-        highest_score = 0.0
-        for score in output[0:8]:
-            if score > highest_score:
-                highest_score = score
+        # Find the action with highest activation
+        action_outputs = output[0:8]
+        best_action = int(np.argmax(action_outputs))
         
         # Jail Decisions:
-        if highest_score == output[3] and output[3] > 0.5:
+        if best_action == 3:
             return {'action_type': 10}  # ACTION_USE_JAIL_CARD
-        elif highest_score == output[4] and output[4] > 0.5:
+        elif best_action == 4:
             return {'action_type': 9}  # ACTION_PAY_JAIL_FINE
-        elif highest_score == output[5] and output[5] > 0.5:
+        elif best_action == 5:
             return {'action_type': 11}  # ACTION_JAIL_ROLL_DOUBLE
 
         # Buying Property
-        if highest_score == output[0] and output[0] > 0.5:
+        if best_action == 0:
             #print("Deciding to buy property with score:", output[0])
             return{
                 'action_type': 0,  # ACTION_LANDED_PROPERTY
                 'buying_property': True
             }
-        elif highest_score == output[0] and output[0] <= 0.5:
+        elif best_action == 1:
             print("Deciding not to buy property with score:", output[0])
             return{
                 'action_type': 0,  # ACTION_LANDED_PROPERTY
@@ -399,16 +399,16 @@ class NEATAgent:
             }
 
         # Building Houses:
-        if highest_score == output[7] and output[7] > 0.7:
+        if best_action == 8:
             #print("Deciding to build houses with score:", output[7])
             return {
                 'action_type': 6,  # ACTION_BUILD_HOUSES
-                'property_position': np.argmax(output[8:36])  # Choose property with highest score
+                'property_position': np.argmax(output[9:36])  # Choose property with highest score
             }
 
         # Trade Proposal
-        if highest_score == output[6] and highest_score > 0.5:
-            property_outputs = output[8:36]
+        if best_action == 7:
+            property_outputs = output[9:36]
             high_value_properties = []
             for i, score in enumerate(property_outputs):
                 if score > 0.75 and i < len(state['properties']):
@@ -422,7 +422,7 @@ class NEATAgent:
             if high_value_properties:
                 trade_offer = self.construct_trade_offer(state, high_value_properties)
                 if trade_offer:
-                    print("Proposing trade offer:", trade_offer)
+                    #print("Proposing trade offer:", trade_offer)
                     return trade_offer
         
         return {'action_type': 8 } # ACTION_END_TURN

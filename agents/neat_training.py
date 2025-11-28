@@ -249,7 +249,6 @@ class NeatTraining:
 
 
     def evaluate_genome(self, genome, config) -> float: 
-        # Save genome to temporary file
         genome_path = f'temp_genome_{genome.key}.pkl'
         with open(genome_path, 'wb') as f:
             pickle.dump(genome, f)
@@ -257,40 +256,49 @@ class NeatTraining:
         wins = 0
         valid_games = 0
         total_score = 0
+        total_opponent_score = 0  # Track across all games
         total_penalty = 0
+        
         try:
             for i in range(self.num_games):
                 game_id = self.game_counter
                 self.game_counter += 1
                 winner, stats = self.run_game(genome_path, game_id)
+                
                 if winner != -1:
                     valid_games += 1
                     if winner == 0:
                         wins += 1
-                # other stats (reward/penalty)
+                
+                # Accumulate stats across ALL games
                 if 'penalties' in stats and isinstance(stats['penalties'], list) and len(stats['penalties']) > 0:
                     total_penalty += stats['penalties'][0]
-                if 'player_scores' in stats and isinstance(stats['player_scores'], list) and len(stats['player_scores']) > 0:
-                    total_score += stats['player_scores'][0]
-                        
+                
+                if 'player_scores' in stats and isinstance(stats['player_scores'], list):
+                    if len(stats['player_scores']) > 0:
+                        total_score += stats['player_scores'][0]
+                    if len(stats['player_scores']) > 1:
+                        # Average opponent scores for this game
+                        game_opp_score = sum(stats['player_scores'][1:]) / (len(stats['player_scores']) - 1)
+                        total_opponent_score += game_opp_score
+                            
         finally:
             os.remove(genome_path)
 
-        # Calculate fitness
+        # Calculate averages
         win_rate = wins / valid_games if valid_games > 0 else 0
         avg_score = total_score / self.num_games
+        avg_opponent_score = total_opponent_score / self.num_games
         avg_penalty = total_penalty / self.num_games
-        # Calculate avg_opponent_score
-        if 'player_scores' in stats and isinstance(stats['player_scores'], list) and len(stats['player_scores']) > 1:
-            avg_opponent_score = sum(stats['player_scores'][1:]) / (len(stats['player_scores']) - 1)
-        else:
-            avg_opponent_score = 0
-
-        # Win rate weighted most heavily, longer games when winning are better
+        
+        # Adjusted fitness formula
+        # Reduce penalty impact, increase score differential importance
         if win_rate > 0:
-            fitness = win_rate * 1000 - avg_penalty + (avg_score - avg_opponent_score) / 100
+            fitness = win_rate * 1000 + (avg_score - avg_opponent_score) / 10 - avg_penalty
         else:
-            fitness = (avg_score - avg_opponent_score) / 100 - avg_penalty
+            # Even without wins, reward beating opponents
+            fitness = (avg_score - avg_opponent_score) / 10 - avg_penalty
+        
         return fitness
     
     def evaluate_tournament_match(self, genomes: List[Tuple[int, object]]) -> Dict[int, float]:
@@ -302,7 +310,18 @@ class NeatTraining:
                 pickle.dump(genome, f)
             genome_paths[gid] = path
         
-        genome_stats = {gid: {'wins': 0, 'games': 0, 'total_score': 0, 'penalties': 0} for gid, _ in genomes}
+        # Track stats across ALL games for each genome
+        genome_stats = {
+            gid: {
+                'wins': 0, 
+                'games': 0, 
+                'total_score': 0, 
+                'total_opponent_score': 0,  # NEW: accumulate across all games
+                'penalties': 0
+            } 
+            for gid, _ in genomes
+        }
+        
         try:
             # Play tournament
             for i in range(self.num_games):
@@ -318,18 +337,20 @@ class NeatTraining:
                         if index == winner:
                             genome_stats[gid]['wins'] += 1
 
-                    # Get player scores for this game
+                    # Get player scores for THIS game
                     scores = stats.get('player_scores', [])
                     if isinstance(scores, list) and len(scores) == len(genomes):
-                        # Exclude the current genome's own score
+                        # Add this genome's score
+                        if len(scores) > index:
+                            genome_stats[gid]['total_score'] += scores[index]
+                        
+                        # Calculate and accumulate opponent scores for THIS game
                         opponent_scores = [s for i, s in enumerate(scores) if i != index]
                         if opponent_scores:
-                            avg_opponent_score = sum(opponent_scores) / len(opponent_scores)
-                        else:
-                            avg_opponent_score = 0
-                        
-                    if 'player_scores' in stats and isinstance(stats['player_scores'], list) and len(stats['player_scores']) > index:
-                        genome_stats[gid]['total_score'] += stats['player_scores'][index]
+                            game_avg_opponent_score = sum(opponent_scores) / len(opponent_scores)
+                            genome_stats[gid]['total_opponent_score'] += game_avg_opponent_score
+                    
+                    # Accumulate penalties
                     if 'penalties' in stats and isinstance(stats['penalties'], list) and len(stats['penalties']) > index:
                         genome_stats[gid]['penalties'] += stats['penalties'][index]
 
@@ -338,18 +359,35 @@ class NeatTraining:
                 if os.path.exists(path):
                     os.remove(path)
 
+        # Calculate fitness for each genome
         fitness_results = {}
         for gid, stats in genome_stats.items():
             win_rate = 0
             if stats['games'] > 0:
                 win_rate = stats['wins'] / stats['games']
+            
             avg_score = stats['total_score'] / self.num_games
+            avg_opponent_score = stats['total_opponent_score'] / self.num_games  # FIXED
             avg_penalty = stats['penalties'] / self.num_games
             
+            # Adjusted fitness formula (same as regular evaluation)
             if win_rate > 0:
-                fitness_results[gid] = win_rate * 1000 - avg_penalty + (avg_score - avg_opponent_score) / 100
+                fitness_results[gid] = (
+                    win_rate * 2000 + 
+                    (avg_score - avg_opponent_score) / 5 - 
+                    avg_penalty / 10
+                )
             else:
-                fitness_results[gid] = (avg_score - avg_opponent_score) / 100 - avg_penalty
+                fitness_results[gid] = (
+                    (avg_score - avg_opponent_score) / 5 - 
+                    avg_penalty / 10
+                )
+            
+            # Debug output
+            print(f"    Genome {gid} detailed stats:")
+            print(f"      Wins: {stats['wins']}/{stats['games']}, Win Rate: {win_rate:.2%}")
+            print(f"      Avg Score: {avg_score:.1f} vs Opponents: {avg_opponent_score:.1f}")
+            print(f"      Avg Penalty: {avg_penalty:.2f}")
 
         return fitness_results
                         
