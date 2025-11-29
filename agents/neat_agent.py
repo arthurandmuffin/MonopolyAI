@@ -402,7 +402,7 @@ class NEATAgent:
         if best_action == 8:
             #print("Deciding to build houses with score:", output[7])
             return {
-                'action_type': 6,  # ACTION_BUILD_HOUSES
+                'action_type': 5,  # ACTION_BUILD_HOUSES
                 'property_position': np.argmax(output[9:36])  # Choose property with highest score
             }
 
