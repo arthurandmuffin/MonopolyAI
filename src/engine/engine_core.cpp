@@ -59,9 +59,6 @@ GameResult Engine::run() {
                 this->state_.current_player_index = player.player_index;
                 Action agent_action = agent.agent_turn(&this->state_);
                 if (this->handle_action(player, agent_action)) {
-                    player.trades_offered = 0;
-                    player.previous_offer = {};
-                    player.offer_accepted = false;
                     break;
                 }
                 if (player.retired) {
@@ -73,15 +70,20 @@ GameResult Engine::run() {
             int property_index = this->position_to_properties_[player.position];
             if (property_index != -1) {
                 PropertyView& property_on = this->properties_[property_index];
+                if (!property_on.auctioned_this_turn) {
+                    this->auction(&property_on);
+                }
                 property_on.auctioned_this_turn = false;
             }
             player.jail_rolled_this_turn = false;
+
+            player.trades_offered = 0;
+            player.previous_offer = {};
+            player.offer_accepted = false;
         }
         turn++;
     }
 
-    
-    
     GameResult result = {
         this->cfg_.game_id,
         static_cast<uint64_t>(turn),
