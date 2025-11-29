@@ -364,9 +364,9 @@ class NEATAgent:
         ''' 
         output[0] -> buy property, 
         output[1] -> do not buy property,
-        output[2] -> bid score, 
-        output[3] -> trade acceptance score, 
-        output[4] = jail use card, output[5] = pay fine, output[6] = roll doubles,
+        output[2] -> trade acceptance score, 
+        output[3] -> bid score, 
+        output[4] = pay fine, output[5] = roll doubles, output[6] = jail use card
         output[7] = trade proposal score, 
         output[8] = build houses score, 
         output[9-36] = property scores
@@ -377,12 +377,12 @@ class NEATAgent:
         best_action = int(np.argmax(action_outputs))
         
         # Jail Decisions:
-        if best_action == 3:
-            return {'action_type': 10}  # ACTION_USE_JAIL_CARD
-        elif best_action == 4:
+        if best_action == 4:
             return {'action_type': 9}  # ACTION_PAY_JAIL_FINE
         elif best_action == 5:
             return {'action_type': 11}  # ACTION_JAIL_ROLL_DOUBLE
+        elif best_action == 6:
+            return {'action_type': 10}  # ACTION_USE_JAIL_CARD
 
         # Buying Property
         if best_action == 0:
@@ -392,7 +392,7 @@ class NEATAgent:
                 'buying_property': True
             }
         elif best_action == 1:
-            print("Deciding not to buy property with score:", output[0])
+            #print("Deciding not to buy property with score:", output[0])
             return{
                 'action_type': 0,  # ACTION_LANDED_PROPERTY
                 'buying_property': False
@@ -512,8 +512,8 @@ class NEATAgent:
         features = self.extract_features(state, action='auction')
         output = self.net.activate(features)
         
-        # Bid based on neural network output and property value (output[1])
-        bid_multiplier = output[1]
+        # Bid based on neural network output and property value (output[3])
+        bid_multiplier = output[3]
         max_bid = int(prop['purchase_price'] * bid_multiplier * 0.8)
         cash_limit = int(agent_player['cash'] * 0.3)
         bid = min(max_bid, cash_limit)
@@ -535,7 +535,7 @@ class NEATAgent:
         
         # output[2] -> trade acceptance score
         accept = output[2] > 0.75
-        print("Trade offer decision with acceptance score:", output[2], "accept:", accept)
+        #print("Trade offer decision with acceptance score:", output[2], "accept:", accept)
         return {
             'action_type': 2,  # ACTION_TRADE_RESPONSE
             'trade_response': accept

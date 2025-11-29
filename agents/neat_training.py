@@ -76,7 +76,7 @@ class NeatTraining:
         game_config = {
             'game_id': game_id,
             'seed': random.randint(0, int(1e9)),
-            'max_turns': 300,
+            'max_turns': 1000,
             'agents': agents
         }
         return game_config
@@ -97,7 +97,7 @@ class NeatTraining:
         tournament_config = {
             'game_id': game_id,
             'seed': random.randint(0, int(1e9)),
-            'max_turns': 300,
+            'max_turns': 1000,
             'agents': agents
         }
         return tournament_config
@@ -126,7 +126,7 @@ class NeatTraining:
 
             # Build the engine command
             seed = random.randint(0, int(1e9))
-            max_turns = 300
+            max_turns = 1000
             cmd = [
                 ENGINE_PATH,
                 str(game_id),
@@ -198,7 +198,7 @@ class NeatTraining:
 
             # Build the engine command
             seed = random.randint(0, int(1e9))
-            max_turns = 300
+            max_turns = 1000
             cmd = [
                 ENGINE_PATH,
                 str(game_id),
@@ -294,7 +294,7 @@ class NeatTraining:
         # Adjusted fitness formula
         # Reduce penalty impact, increase score differential importance
         if win_rate > 0:
-            fitness = win_rate * 1000 + (avg_score - avg_opponent_score) / 10 - avg_penalty
+            fitness = win_rate * 10000 + (avg_score - avg_opponent_score) / 10 - avg_penalty
         else:
             # Even without wins, reward beating opponents
             fitness = (avg_score - avg_opponent_score) / 10 - avg_penalty
@@ -332,10 +332,9 @@ class NeatTraining:
                 winner, stats = self.run_tournament_game(paths, game_id)
 
                 for index, (gid, _) in enumerate(genomes):
-                    if winner != -1:
-                        genome_stats[gid]['games'] += 1
-                        if index == winner:
-                            genome_stats[gid]['wins'] += 1
+                    genome_stats[gid]['games'] += 1
+                    if index == winner:
+                        genome_stats[gid]['wins'] += 1
 
                     # Get player scores for THIS game
                     scores = stats.get('player_scores', [])
@@ -373,14 +372,16 @@ class NeatTraining:
             # Adjusted fitness formula (same as regular evaluation)
             if win_rate > 0:
                 fitness_results[gid] = (
-                    win_rate * 2000 + 
-                    (avg_score - avg_opponent_score) / 5 - 
-                    avg_penalty / 10
+                    win_rate * 10000 + 
+                    (avg_score - avg_opponent_score) / 5 
+                    # Train without penalty
+                     - avg_penalty
                 )
             else:
                 fitness_results[gid] = (
-                    (avg_score - avg_opponent_score) / 5 - 
-                    avg_penalty / 10
+                    (avg_score - avg_opponent_score) / 5 
+                    # Train without penalty
+                     - avg_penalty
                 )
             
             # Debug output
