@@ -118,7 +118,6 @@ void Engine::update_rent(PropertyView& property) {
                 railroads_active++;
             }
         }
-        assert(railroads_active >= 1);
 
         for (auto position : this->board_.railroad_positions) {
             int index = this->position_to_properties_[position];
@@ -140,7 +139,6 @@ void Engine::update_rent(PropertyView& property) {
                 utilities_active++;
             }
         }
-        assert(utilities_active >= 1);
 
         const double average_roll = 7.0;
         const auto& multipliers = this->board_.utilities[0].multiplier;
