@@ -398,12 +398,6 @@ class NEATAgent:
                 'action_type': 0,  # ACTION_LANDED_PROPERTY
                 'buying_property': False
             }
-        elif best_action == 1:
-            #print("Deciding not to buy property with score:", output[0])
-            return{
-                'action_type': 0,  # ACTION_LANDED_PROPERTY
-                'buying_property': False
-            }
         # Build Houses:
         elif best_action == 6:
             #print("Deciding to build houses with score:", output[6])
