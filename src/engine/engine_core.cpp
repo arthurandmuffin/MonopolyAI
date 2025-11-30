@@ -438,7 +438,7 @@ void Engine::handle_position(PlayerView& player) {
 
 void Engine::penalize(PlayerView& player, const std::string& reason) {
     this->penalties_[player.player_index] += 0.5;
-    std::cout << reason << "\n";
+    //std::cout << reason << "\n";
 }
 
 void Engine::jail(PlayerView& player) {

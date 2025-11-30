@@ -49,6 +49,10 @@ void Engine::trade(PlayerView& playerA, TradeDetail& playerA_assets, PlayerView&
 }
 
 bool Engine::legal_trade_detail(PlayerView& player, TradeDetail& assets) {
+    if (assets.property_num == 0 && assets.cash == 0 && assets.jail_cards == 0) {
+        return false;
+    }
+
     if (player.cash < assets.cash) {
         return false;
     }
