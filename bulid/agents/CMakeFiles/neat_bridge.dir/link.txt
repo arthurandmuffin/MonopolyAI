@@ -1,1 +1,0 @@
-/usr/bin/cc -g -arch arm64 -dynamiclib -Wl,-headerpad_max_install_names -o libneat_bridge.dylib -install_name @rpath/libneat_bridge.dylib CMakeFiles/neat_bridge.dir/neat_bridge.c.o  /Library/Frameworks/Python.framework/Versions/3.11/lib/libpython3.11.dylib

@@ -1,8 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/Users/arthurhuang/McGill/ECSE-526/MonopolyAI/bulid/cmake_install.cmake",
-		"/Users/arthurhuang/McGill/ECSE-526/MonopolyAI/bulid/agents/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
