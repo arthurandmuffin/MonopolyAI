@@ -1,0 +1,1 @@
+/usr/bin/cc -g -arch arm64 -dynamiclib -Wl,-headerpad_max_install_names -o libgreedy_agent.dylib -install_name @rpath/libgreedy_agent.dylib CMakeFiles/greedy_agent.dir/greedy_agent.c.o

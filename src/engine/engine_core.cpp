@@ -30,6 +30,7 @@ GameResult Engine::run() {
         }
         for (auto it = this->players_.begin(); it != this->players_.end(); it++) {
             auto& player = *it;
+            assert(player.player_index < 5);
             if (player.retired) {
                 continue;
             }
@@ -70,7 +71,7 @@ GameResult Engine::run() {
             int property_index = this->position_to_properties_[player.position];
             if (property_index != -1) {
                 PropertyView& property_on = this->properties_[property_index];
-                if (!property_on.auctioned_this_turn) {
+                if (!property_on.auctioned_this_turn && !property_on.is_owned) {
                     this->auction(&property_on);
                 }
                 property_on.auctioned_this_turn = false;
