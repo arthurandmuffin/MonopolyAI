@@ -76,7 +76,7 @@ class NeatTraining:
         game_config = {
             'game_id': game_id,
             'seed': random.randint(0, int(1e9)),
-            'max_turns': 1000,
+            'max_turns': 300,
             'agents': agents
         }
         return game_config
@@ -97,7 +97,7 @@ class NeatTraining:
         tournament_config = {
             'game_id': game_id,
             'seed': random.randint(0, int(1e9)),
-            'max_turns': 1000,
+            'max_turns': 300,
             'agents': agents
         }
         return tournament_config
@@ -126,7 +126,7 @@ class NeatTraining:
 
             # Build the engine command
             seed = random.randint(0, int(1e9))
-            max_turns = 1000
+            max_turns = 300
             cmd = [
                 ENGINE_PATH,
                 str(game_id),
@@ -198,7 +198,7 @@ class NeatTraining:
 
             # Build the engine command
             seed = random.randint(0, int(1e9))
-            max_turns = 1000
+            max_turns = 300
             cmd = [
                 ENGINE_PATH,
                 str(game_id),
@@ -375,13 +375,13 @@ class NeatTraining:
                     win_rate * 10000 + 
                     (avg_score - avg_opponent_score) / 5 
                     # Train without penalty
-                     - avg_penalty
+                     #- avg_penalty
                 )
             else:
                 fitness_results[gid] = (
                     (avg_score - avg_opponent_score) / 5 
                     # Train without penalty
-                     - avg_penalty
+                     #- avg_penalty
                 )
             
             # Debug output

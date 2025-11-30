@@ -526,7 +526,7 @@ class NEATAgent:
         output = self.net.activate(features)
         
         # Bid based on neural network output and property value (output[3])
-        bid_multiplier = output[3]
+        bid_multiplier = output[1]
         max_bid = int(prop['purchase_price'] * bid_multiplier * 0.8)
         cash_limit = int(agent_player['cash'] * 0.3)
         bid = min(max_bid, cash_limit)
