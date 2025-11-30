@@ -191,10 +191,6 @@ class NEATAgent:
             props_to = trade_offer['offer_to'].get('property_ids', [])
             props_from = trade_offer['offer_from'].get('property_ids', [])
             
-            # Calculate property values
-            prop_values = {p['property_id']: p['purchase_price'] for p in state['properties']}
-
-            
             # Property types in trade
             props_by_id = {p['property_id']: p for p in state['properties']}
             railroads_to = sum(1 for pid in props_to if props_by_id.get(pid, {}).get('type') == 2)
@@ -362,9 +358,9 @@ class NEATAgent:
         features = self.extract_features(state)
         output = self.net.activate(features)
         ''' 
-        output[0] -> buy property, do not buy property,
+        output[0] -> trade acceptance score, 
         output[1] -> bid score, 
-        output[2] -> trade acceptance score, 
+        output[2] -> buy property, do not buy property,
         output[3] = jail use card, output[4] = pay fine, output[5] = roll doubles,
         output[6] = build houses score,
         output[7] = trade proposal score, 
@@ -374,7 +370,7 @@ class NEATAgent:
 
         '''
         # Find the action with highest activation
-        action_outputs = output[0:10]
+        action_outputs = output[2:10]
         best_action = int(np.argmax(action_outputs))
         
         # Jail Decisions:
@@ -386,13 +382,13 @@ class NEATAgent:
             return {'action_type': 11}  # ACTION_JAIL_ROLL_DOUBLE
 
         # Buying Property
-        if best_action == 0 and output[0] > 0.5:
+        if best_action == 2 and output[0] > 0.5:
             #print("Deciding to buy property with score:", output[0])
             return{
                 'action_type': 0,  # ACTION_LANDED_PROPERTY
                 'buying_property': True
             }
-        elif best_action == 0 and output[0] <= 0.5:
+        elif best_action == 2 and output[0] <= 0.5:
             #print("Deciding not to buy property with score:", output[0])
             return{
                 'action_type': 0,  # ACTION_LANDED_PROPERTY
@@ -519,7 +515,7 @@ class NEATAgent:
         features = self.extract_features(state, action='auction')
         output = self.net.activate(features)
         
-        # Bid based on neural network output and property value (output[3])
+        # Bid based on neural network output and property value (output[1])
         bid_multiplier = output[1]
         max_bid = int(prop['purchase_price'] * bid_multiplier * 0.8)
         cash_limit = int(agent_player['cash'] * 0.3)
@@ -530,8 +526,6 @@ class NEATAgent:
                 'action_type': 7,  # ACTION_AUCTION_BID
                 'auction_bid': bid
             }
-
-        return {'action_type': 8} # ACTION_END_TURN
     
     def trade_offer(self, state: Dict, offer: Dict) -> Dict:
         # Respond to trade offer
@@ -541,7 +535,7 @@ class NEATAgent:
         output = self.net.activate(features)
         
         # output[2] -> trade acceptance score
-        accept = output[2] > 0.75
+        accept = output[0] > 0.75
         #print("Trade offer decision with acceptance score:", output[2], "accept:", accept)
         return {
             'action_type': 2,  # ACTION_TRADE_RESPONSE

@@ -20,9 +20,9 @@ OPPONENT_AGENTS = [
     "./build/agents/Release/neat_bridge.dll",
 ]
 NAIVE_OPPONENT_AGENTS = [
-    "./build/agents/Release/greedy_agent.dll",
     "./build/agents/Release/random_agent.dll",
-    "./build/agents/Release/greedy_agent.dll",
+    "./build/agents/Release/random_agent.dll",
+    "./build/agents/Release/random_agent.dll",
     ]
 
 class NeatTraining:
@@ -76,7 +76,7 @@ class NeatTraining:
         game_config = {
             'game_id': game_id,
             'seed': random.randint(0, int(1e9)),
-            'max_turns': 300,
+            'max_turns': 1000,
             'agents': agents
         }
         return game_config
@@ -97,7 +97,7 @@ class NeatTraining:
         tournament_config = {
             'game_id': game_id,
             'seed': random.randint(0, int(1e9)),
-            'max_turns': 300,
+            'max_turns': 1000,
             'agents': agents
         }
         return tournament_config
@@ -126,7 +126,7 @@ class NeatTraining:
 
             # Build the engine command
             seed = random.randint(0, int(1e9))
-            max_turns = 300
+            max_turns = 1500
             cmd = [
                 ENGINE_PATH,
                 str(game_id),
@@ -142,6 +142,7 @@ class NeatTraining:
                 timeout=60,
             )
             print("Return code:", result.returncode)
+            print("STDOUT:", result.stdout)
 
             # Parse result
             if result.returncode == 0:
@@ -198,7 +199,7 @@ class NeatTraining:
 
             # Build the engine command
             seed = random.randint(0, int(1e9))
-            max_turns = 300
+            max_turns = 500
             cmd = [
                 ENGINE_PATH,
                 str(game_id),
@@ -245,61 +246,6 @@ class NeatTraining:
             for f in temp_files:
                 if os.path.exists(f):
                     os.remove(f)
-
-
-
-    def evaluate_genome(self, genome, config) -> float: 
-        genome_path = f'temp_genome_{genome.key}.pkl'
-        with open(genome_path, 'wb') as f:
-            pickle.dump(genome, f)
-
-        wins = 0
-        valid_games = 0
-        total_score = 0
-        total_opponent_score = 0  # Track across all games
-        total_penalty = 0
-        
-        try:
-            for i in range(self.num_games):
-                game_id = self.game_counter
-                self.game_counter += 1
-                winner, stats = self.run_game(genome_path, game_id)
-                
-                if winner != -1:
-                    valid_games += 1
-                    if winner == 0:
-                        wins += 1
-                
-                # Accumulate stats across ALL games
-                if 'penalties' in stats and isinstance(stats['penalties'], list) and len(stats['penalties']) > 0:
-                    total_penalty += stats['penalties'][0]
-                
-                if 'player_scores' in stats and isinstance(stats['player_scores'], list):
-                    if len(stats['player_scores']) > 0:
-                        total_score += stats['player_scores'][0]
-                    if len(stats['player_scores']) > 1:
-                        # Average opponent scores for this game
-                        game_opp_score = sum(stats['player_scores'][1:]) / (len(stats['player_scores']) - 1)
-                        total_opponent_score += game_opp_score
-                            
-        finally:
-            os.remove(genome_path)
-
-        # Calculate averages
-        win_rate = wins / valid_games if valid_games > 0 else 0
-        avg_score = total_score / self.num_games
-        avg_opponent_score = total_opponent_score / self.num_games
-        avg_penalty = total_penalty / self.num_games
-        
-        # Adjusted fitness formula
-        # Reduce penalty impact, increase score differential importance
-        if win_rate > 0:
-            fitness = win_rate * 10000 + (avg_score - avg_opponent_score) / 10 - avg_penalty
-        else:
-            # Even without wins, reward beating opponents
-            fitness = (avg_score - avg_opponent_score) / 10 - avg_penalty
-        
-        return fitness
     
     def evaluate_tournament_match(self, genomes: List[Tuple[int, object]]) -> Dict[int, float]:
         # Save genomes to temp file
@@ -373,15 +319,15 @@ class NeatTraining:
             if win_rate > 0:
                 fitness_results[gid] = (
                     win_rate * 10000 + 
-                    (avg_score - avg_opponent_score) / 5 
+                    (avg_score - avg_opponent_score) / 10 
                     # Train without penalty
-                     #- avg_penalty
+                    # - avg_penalty / 5
                 )
             else:
                 fitness_results[gid] = (
-                    (avg_score - avg_opponent_score) / 5 
+                    (avg_score - avg_opponent_score) / 10 
                     # Train without penalty
-                     #- avg_penalty
+                    # - avg_penalty / 5
                 )
             
             # Debug output
@@ -456,50 +402,6 @@ class NeatTraining:
         
         self.generation += 1
 
-
-    # Parallel evaluation of genomes generated by Copilot
-    def eval_genomes_parallel(self, genomes, config):
-        """Evaluate all genomes in parallel"""
-        print(f"\n=== Generation {self.generation} ===")
-        
-        # Use multiprocessing for parallel evaluation
-        with mp.Pool(processes=mp.cpu_count() // 2) as pool:
-            fitness_results = pool.starmap(
-                self.evaluate_genome,
-                [(genome, config) for genome_id, genome in genomes]
-            )
-        
-        # Assign fitness to genomes
-        for (genome_id, genome), fitness in zip(genomes, fitness_results):
-            genome.fitness = fitness
-            print(f"Genome {genome_id}: fitness = {fitness:.2f}")
-       
-        # Print statistics
-        fitnesses = [g.fitness for _, g in genomes]
-        print(f"\nGeneration {self.generation} Stats:")
-        print(f"  Max fitness: {max(fitnesses):.2f}")
-        print(f"  Avg fitness: {sum(fitnesses)/len(fitnesses):.2f}")
-        print(f"  Min fitness: {min(fitnesses):.2f}")
-        
-        self.generation += 1
-
-    def eval_genomes_sequential(self, genomes, config):
-        # Sequential evaluation of genomes, for debugging
-        print(f"\nGeneration {self.generation} ")
-        for genome_id, genome in genomes:
-            fitness = self.evaluate_genome(genome, config)
-            genome.fitness = fitness
-            print(f"Genome {genome_id}: fitness = {fitness:.2f}")
-        
-        # Print statistics
-        fitnesses = [g.fitness for _, g in genomes]
-        print(f"\nGeneration {self.generation} Stats:")
-        print(f"  Max fitness: {max(fitnesses):.2f}")
-        print(f"  Avg fitness: {sum(fitnesses)/len(fitnesses):.2f}")
-        print(f"  Min fitness: {min(fitnesses):.2f}")
-        
-        self.generation += 1
-
     def train(self, generations: int = 50, checkpoint = None, parallel = False, tournament = False):
         if checkpoint:
             print(f"Restoring from checkpoint {checkpoint}...")
@@ -516,16 +418,8 @@ class NeatTraining:
 
         # Run the NEAT algorithm for a given number of generations
         best_genome = None
-        if tournament:
-            print("Running tournament-style genome evaluation...")
-            best_genome = p.run(self.eval_genomes_tournament, generations)
-        elif parallel:
-            print("Running parallel genome evaluation...")
-            best_genome = p.run(self.eval_genomes_parallel, generations)
-        else:
-            print("Running sequential genome evaluation...")
-            best_genome = p.run(self.eval_genomes_sequential, generations)
-        
+        print("Running tournament-style genome evaluation...")
+        best_genome = p.run(self.eval_genomes_tournament, generations)
         # Save the best genome
         with open('genomes/best_genome.pkl', 'wb') as f:
             pickle.dump(best_genome, f)
@@ -534,7 +428,18 @@ class NeatTraining:
 
         return best_genome, stats
     
-    def test_genome(genome_path='genomes/best_genome.pkl', num_games: int = 20):
+    def test_genome(genome_path='genomes/best_genome.pkl', num_games: int = 20, checkpoint: str = None):
+        if checkpoint:
+            print(f"Restoring from checkpoint {checkpoint} to test best genome...")
+            p = neat.Checkpointer.restore_checkpoint(checkpoint)
+            # Find the best genome in the population
+            best_genome_id, best_genome = max(p.population.items(), key=lambda item: item[1].fitness if item[1].fitness is not None else float('-inf'))
+            with open('temp_best_genome.pkl', 'wb') as f:
+                pickle.dump(best_genome, f)
+            genome_path = 'temp_best_genome.pkl'
+        else:
+            print(f"Testing genome from {genome_path}...")
+
         trainer = NeatTraining(num_opponents=3, num_games=num_games)
         wins = 0
         valid_games = 0
@@ -568,17 +473,15 @@ def main():
     parser.add_argument('--num_games', type=int, default=20, help='Number of games per genome evaluation')
     parser.add_argument('--checkpoint', type=str, default=None, help='Path to checkpoint file')
     parser.add_argument('--genome', type=str, default='genomes/best_genome.pkl', help='Path to genome file for testing')
-    parser.add_argument('--parallel', action='store_true', default=False, help='Use parallel evaluation of genomes')
-    parser.add_argument('--tournament', action='store_true', default=False, help='Run tournament mode')
     args = parser.parse_args()
 
     if args.train:
         # Train NEAT agent (parallel for faster training)
         trainer = NeatTraining(num_opponents=args.opponents, num_games=args.num_games)
-        trainer.train(generations=args.generations, checkpoint=args.checkpoint, parallel=args.parallel, tournament=args.tournament)
+        trainer.train(generations=args.generations, checkpoint=args.checkpoint)
     elif args.test:
         # Test against naive opponents
-        NeatTraining.test_genome(genome_path=args.genome, num_games=args.num_games)
+        NeatTraining.test_genome(genome_path=args.genome, num_games=args.num_games, checkpoint=args.checkpoint)
     else:
         print("Use --train to train or --test to test an agent")
         print(f"Example: python {__file__} --train --generations 30 --num_games 5")

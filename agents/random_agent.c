@@ -71,12 +71,12 @@ Action agent_turn(void* agent_ptr, const GameStateView* state) {
         return action;
     }
     
-    const PlayerView* me = &state->players[agent->agent_index];
+    const PlayerView* agent_player = &state->players[agent->agent_index];
     
     // Find property at current position
     const PropertyView* current_property = NULL;
     for (uint32_t i = 0; i < state->num_properties; i++) {
-        if (state->properties[i].property_id == me->position) {
+        if (state->properties[i].property_id == agent_player->position) {
             current_property = &state->properties[i];
             break;
         }
@@ -85,22 +85,9 @@ Action agent_turn(void* agent_ptr, const GameStateView* state) {
     if (current_property && !current_property->is_owned) {
         uint32_t price = current_property->purchase_price;
         
-        if (me->cash >= price) {
-            // Random decision with bias based on affordability
-            float affordability = (float)price / (float)me->cash;
-            float buy_probability;
-            
-            if (affordability <= 0.2f) {
-                buy_probability = 0.8f; // 80% chance if very affordable
-            } else if (affordability <= 0.4f) {
-                buy_probability = 0.6f; // 60% chance if affordable
-            } else if (affordability <= 0.6f) {
-                buy_probability = 0.3f; // 30% chance if expensive
-            } else {
-                buy_probability = 0.1f; // 10% chance if very expensive
-            }
-            
-            bool should_buy = random_float(agent) < buy_probability;
+        if (agent_player->cash >= price) {
+            // 50% chance to buy
+            bool should_buy = random_float(agent) < 0.5f;
             
             action.type = ACTION_LANDED_PROPERTY;
             action.buying_property = should_buy;
@@ -124,7 +111,7 @@ Action auction(void* agent_ptr, const GameStateView* state, const AuctionView* a
         return action;
     }
     
-    const PlayerView* me = &state->players[agent->agent_index];
+    const PlayerView* agent_player = &state->players[agent->agent_index];
     
     // Find the property being auctioned
     const PropertyView* prop = NULL;
@@ -144,9 +131,9 @@ Action auction(void* agent_ptr, const GameStateView* state, const AuctionView* a
     float bid_probability = 0.4f; // 40% chance to bid
     
     if (random_float(agent) < bid_probability) {
-        // Bid a random amount between 10% and 50% of property value
-        uint32_t min_bid = (prop->purchase_price * 10) / 100;
-        uint32_t max_bid = (prop->purchase_price * 50) / 100;
+        // Bid a random amount between 30% and 80% of property value
+        uint32_t min_bid = (prop->purchase_price * 30) / 100;
+        uint32_t max_bid = (prop->purchase_price * 80) / 100;
         
         if (max_bid >= min_bid && max_bid >= 10) {
             uint32_t bid = random_range(agent, min_bid, max_bid);
