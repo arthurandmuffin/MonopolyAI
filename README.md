@@ -1,10 +1,6 @@
 To run the game agent:
 
-In the root directory, compile and build the game engine and game agents with CMake:
-mkdir build
-cd build
-cmake ..
-cmake --build . --config Release
+In the root directory, compile and build the game engine and make
 
 In the root directory, to test the agent against naive agents:
 python agents/neat_training.py --test --num_games (num games) 

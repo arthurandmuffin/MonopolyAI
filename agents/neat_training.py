@@ -9,8 +9,7 @@ import multiprocessing as mp
 import _socket
 from typing import Dict, List, Tuple
 import os
-#os.environ['PYTHONHOME'] = r'C:\Users\xiayi\AppData\Local\Programs\Python\Python311'
-#os.environ['PYTHONPATH'] = r'C:\Users\xiayi\AppData\Local\Programs\Python\Python311\DLLs'
+
 
 ENGINE_PATH = "./build/Release/monopoly_engine.exe"
 NEAT_AGENT_PATH = "./build/agents/Release/neat_bridge.dll"
