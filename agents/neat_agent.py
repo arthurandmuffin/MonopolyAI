@@ -283,8 +283,6 @@ class NEATAgent:
     
 
     def construct_trade_offer(self, state: Dict, high_value_properties: List[Dict]) -> Optional[Dict]:
-        agent_player = state['players'][self.agent_index]
-
         # Group by owner
         offers_by_owner = {}
         our_properties = []
@@ -352,9 +350,7 @@ class NEATAgent:
         
         return trade_offer
 
-    def agent_turn(self, state) -> Dict:
-        agent_player = state['players'][self.agent_index]
-        
+    def agent_turn(self, state) -> Dict:        
         features = self.extract_features(state)
         output = self.net.activate(features)
         ''' 
@@ -383,27 +379,23 @@ class NEATAgent:
 
         # Buying Property
         if best_action == 2 and output[0] > 0.5:
-            #print("Deciding to buy property with score:", output[0])
             return{
                 'action_type': 0,  # ACTION_LANDED_PROPERTY
                 'buying_property': True
             }
         elif best_action == 2 and output[0] <= 0.5:
-            #print("Deciding not to buy property with score:", output[0])
             return{
                 'action_type': 0,  # ACTION_LANDED_PROPERTY
                 'buying_property': False
             }
         # Build Houses:
         elif best_action == 6:
-            #print("Deciding to build houses with score:", output[6])
             return {
                 'action_type': 5,  # ACTION_BUILD_HOUSES
                 'property_position': np.argmax(output[10:38])  # Choose property with highest score
             }
         # Undevelop Houses:
         elif best_action == 8:
-            #print("Deciding to build houses with score:", output[7])
             return {
                 'action_type': 6,  # ACTION_BUILD_HOUSES
                 'property_position': np.argmax(output[10:38])  # Choose property with highest score
@@ -424,79 +416,10 @@ class NEATAgent:
             if high_value_properties:
                 trade_offer = self.construct_trade_offer(state, high_value_properties)
                 if trade_offer:
-                    #print("Proposing trade offer:", trade_offer)
                     return trade_offer
         elif best_action == 9:
             return {'action_type': 8 } # ACTION_END_TURN
 
-
-
-        '''
-        # Handle jail
-        if agent_player['in_jail']:
-            features = np.concatenate([self.extract_features(state), self.extract_jail_features(state)])
-            output = self.net.activate(features)
-            # Outputs [3-5] for jail decisions
-            use_card_score = output[3] if len(output) > 3 else 0.0
-            pay_fine_score = output[4] if len(output) > 4 else 0.0
-            roll_doubles_score = output[5] if len(output) > 5 else 0.0
-            
-            # Choose best option
-            if agent_player['jail_free_cards'] > 0 and use_card_score > pay_fine_score and use_card_score > roll_doubles_score:
-                return {'action_type': 10}  # ACTION_USE_JAIL_CARD
-            elif agent_player['cash'] >= 50 and pay_fine_score > roll_doubles_score:
-                return {'action_type': 9}  # ACTION_PAY_JAIL_FINE
-            else:
-                return {'action_type': 11}  # ACTION_JAIL_ROLL_DOUBLE
-            
-        # Check if on unowned property
-        property_at_position = None
-        for prop in state['properties']:
-            if prop['position'] == agent_player['position'] and not prop['is_owned']:
-                property_at_position = prop
-                #print("Landed on unowned property:", property_at_position['property_id'])
-                break
-        
-        if property_at_position:
-            # Decide whether to buy with neural network
-            features = np.concatenate([self.extract_features(state), self.extract_property_features(state, property_at_position['property_id'])])
-            output = self.net.activate(features)
-            buy_score = output[0]
-            if buy_score > 0.5 and agent_player['cash'] > property_at_position['purchase_price']:
-                #print("Deciding to buy property:", property_at_position['property_id'], "with score:", buy_score)
-                return {
-                    'action_type': 0,  # ACTION_LANDED_PROPERTY
-                    'buying_property': True
-                }
-            else:
-                #print("Deciding not to buy property:", property_at_position['property_id'], "with score:", buy_score)
-                return {
-                    'action_type': 0,
-                    'buying_property': False
-                }
-            
-        # Trade Proposal: Outputs [6-33]
-        features = np.concatenate([self.extract_features(state), self.extract_trade_proposal_features(state)])
-        output = self.net.activate(features)
-        trade_outputs = output[6:33]
-        if len(trade_outputs) == 28:
-            high_value_properties = []
-            for i, score in enumerate(trade_outputs):
-                if score > 0.75 and i < len(state['properties']):
-                    prop = state['properties'][i]
-                    high_value_properties.append({
-                        'property_id': prop['property_id'],
-                        'position': prop['position'],
-                        'owner': prop['owner_index'] if prop['is_owned'] else None,
-                        'score': score
-                    })
-            
-            if high_value_properties:
-                trade_offer = self.construct_trade_offer(state, high_value_properties)
-                if trade_offer:
-                    print("Proposing trade offer:", trade_offer)
-                    return trade_offer
-                    '''
             
     def auction(self, state: Dict, auction: Dict) -> Dict:
         agent_player = state['players'][self.agent_index]
@@ -521,7 +444,6 @@ class NEATAgent:
         cash_limit = int(agent_player['cash'] * 0.3)
         bid = min(max_bid, cash_limit)
         if bid >= 10 and bid_multiplier > 0.3:
-            #print("Bidding", bid, "on property", property_id)
             return {
                 'action_type': 7,  # ACTION_AUCTION_BID
                 'auction_bid': bid
@@ -536,7 +458,6 @@ class NEATAgent:
         
         # output[2] -> trade acceptance score
         accept = output[0] > 0.75
-        #print("Trade offer decision with acceptance score:", output[2], "accept:", accept)
         return {
             'action_type': 2,  # ACTION_TRADE_RESPONSE
             'trade_response': accept

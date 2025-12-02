@@ -9,8 +9,8 @@ import multiprocessing as mp
 import _socket
 from typing import Dict, List, Tuple
 import os
-os.environ['PYTHONHOME'] = r'C:\Users\xiayi\AppData\Local\Programs\Python\Python311'
-os.environ['PYTHONPATH'] = r'C:\Users\xiayi\AppData\Local\Programs\Python\Python311\DLLs'
+#os.environ['PYTHONHOME'] = r'C:\Users\xiayi\AppData\Local\Programs\Python\Python311'
+#os.environ['PYTHONPATH'] = r'C:\Users\xiayi\AppData\Local\Programs\Python\Python311\DLLs'
 
 ENGINE_PATH = "./build/Release/monopoly_engine.exe"
 NEAT_AGENT_PATH = "./build/agents/Release/neat_bridge.dll"
@@ -20,11 +20,12 @@ OPPONENT_AGENTS = [
     "./build/agents/Release/neat_bridge.dll",
 ]
 NAIVE_OPPONENT_AGENTS = [
+    "./build/agents/Release/greedy_agent.dll",
     "./build/agents/Release/random_agent.dll",
-    "./build/agents/Release/random_agent.dll",
-    "./build/agents/Release/random_agent.dll",
+    "./build/agents/Release/greedy_agent.dll",
     ]
 
+# Written with the assistance of Copilot
 class NeatTraining:
     def __init__(self, config_path='agents/neat_config.txt' , num_opponents: int = 2, num_games: int = 50):
         self.config_path = config_path
@@ -76,7 +77,7 @@ class NeatTraining:
         game_config = {
             'game_id': game_id,
             'seed': random.randint(0, int(1e9)),
-            'max_turns': 1000,
+            'max_turns': 1500,
             'agents': agents
         }
         return game_config
@@ -97,7 +98,7 @@ class NeatTraining:
         tournament_config = {
             'game_id': game_id,
             'seed': random.randint(0, int(1e9)),
-            'max_turns': 1000,
+            'max_turns': 500,
             'agents': agents
         }
         return tournament_config
@@ -198,13 +199,11 @@ class NeatTraining:
                 ]
 
             # Build the engine command
-            seed = random.randint(0, int(1e9))
-            max_turns = 500
             cmd = [
                 ENGINE_PATH,
                 str(game_id),
-                str(seed),
-                str(max_turns),
+                str(config['seed']),
+                str(config['max_turns']),
             ] + agent_args
 
             print("Running command:", ' '.join(cmd))
@@ -215,7 +214,6 @@ class NeatTraining:
                 timeout=60,
             )
             print("STDOUT:", result.stdout)
-            print("Return code:", result.returncode)
 
             # Parse result
             if result.returncode == 0:
@@ -320,14 +318,14 @@ class NeatTraining:
                 fitness_results[gid] = (
                     win_rate * 10000 + 
                     (avg_score - avg_opponent_score) / 10 
-                    # Train without penalty
-                    # - avg_penalty / 5
+                    # Train first 20 generations without penalty, train with penalty afterwards
+                     - avg_penalty / 5
                 )
             else:
                 fitness_results[gid] = (
                     (avg_score - avg_opponent_score) / 10 
-                    # Train without penalty
-                    # - avg_penalty / 5
+                    # Train first 20 generations without penalty, train with penalty afterwards
+                     - avg_penalty / 5
                 )
             
             # Debug output
@@ -402,7 +400,7 @@ class NeatTraining:
         
         self.generation += 1
 
-    def train(self, generations: int = 50, checkpoint = None, parallel = False, tournament = False):
+    def train(self, generations: int = 50, checkpoint = None, tournament = False):
         if checkpoint:
             print(f"Restoring from checkpoint {checkpoint}...")
             p = neat.Checkpointer.restore_checkpoint(checkpoint)
@@ -428,7 +426,8 @@ class NeatTraining:
 
         return best_genome, stats
     
-    def test_genome(genome_path='genomes/best_genome.pkl', num_games: int = 20, checkpoint: str = None):
+    def test_genome(genome_path= None, num_games: int = 20, checkpoint: str = None):
+        temp_f = False
         if checkpoint:
             print(f"Restoring from checkpoint {checkpoint} to test best genome...")
             p = neat.Checkpointer.restore_checkpoint(checkpoint)
@@ -437,31 +436,37 @@ class NeatTraining:
             with open('temp_best_genome.pkl', 'wb') as f:
                 pickle.dump(best_genome, f)
             genome_path = 'temp_best_genome.pkl'
+            temp_f = True
         else:
             print(f"Testing genome from {genome_path}...")
 
         trainer = NeatTraining(num_opponents=3, num_games=num_games)
         wins = 0
-        valid_games = 0
+        total_agent_score = 0
+        total_opponent_score = 0
         for i in range(num_games):
-            best_genome, stats = trainer.run_game(genome_path, i, test=True)
-            if best_genome != -1:
-                valid_games += 1
-                if best_genome == 0:
-                    wins += 1
-                penalties = stats.get('penalties', {})
-                #print stats based on output
+            winner, stats = trainer.run_game(genome_path, i, test=True)
+            if winner == 0:
+                wins += 1
+            scores = stats.get('player_scores', [])
+            if scores and len(scores) > 0:
+                total_agent_score += scores[0]
+                if len(scores) > 1:
+                    total_opponent_score += sum(scores[1:]) / (len(scores) - 1)
 
-
-        if valid_games > 0:
-            win_rate = wins / valid_games
-            print(f"Test Results over {valid_games} valid games:")
-            print(f"  Wins: {wins}")
-            print(f"  Win Rate: {win_rate * 100:.2f}%")
-            print(f" Penalties: {penalties}")
-        else:
-            print("No valid games were played during testing.")
-
+        win_rate = wins / num_games
+        avg_agent_score = total_agent_score / num_games
+        avg_opponent_score = total_opponent_score / num_games
+        print(f"Test Results over {num_games} valid games:")
+        print(f"  Wins: {wins}")
+        print(f"  Win Rate: {win_rate * 100:.2f}%")
+        print(f"  Avg Agent Final Score: {avg_agent_score:.2f}")
+        print(f"  Avg Opponent Final Score: {avg_opponent_score:.2f}")
+        print(f"  Score Difference (Agent - Opponents): {avg_agent_score - avg_opponent_score:.2f}")
+        if temp_f == True:
+            if os.path.exists('temp_best_genome.pkl'):
+                os.remove('temp_best_genome.pkl')
+    
                 
 
 def main():

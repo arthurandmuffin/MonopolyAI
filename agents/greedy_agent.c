@@ -165,25 +165,6 @@ Action agent_turn(void* agent_ptr, const GameStateView* state) {
         }
     }
 
-    /* Mortgage handling handled by engine
-    // Handle payment when mortgage needed
-    if (state->owed > 0 && state->owed > player->cash) {
-        // Mortgage properties until enough cash
-        uint32_t mortgage_property = property_to_mortgage(state, agent->agent_index, state->owed - player->cash);
-
-        if (mortgage_property != UINT32_MAX) {
-            action.type = ACTION_MORTGAGE;
-            action.mortgage_property = mortgage_property;
-            return action;
-        } else {
-            // no more properties to mortgage, declare bankruptcy
-            action.type = ACTION_END_TURN;
-            printf("Agent %s declares bankruptcy!\n", agent->name);
-            return action;
-        }
-    }
-        */
-
     // Buying unowned property
     const PropertyView* landed_property = NULL;
     for (uint32_t i = 0; i < state->num_properties; ++i) {
@@ -196,7 +177,7 @@ Action agent_turn(void* agent_ptr, const GameStateView* state) {
     if (landed_property && !landed_property->is_owned) {
         uint32_t price = landed_property->purchase_price;
         // Buy property if affordable
-        if (player->cash >= price) { 
+        if (player->cash >= price + 100) { 
             action.type = ACTION_LANDED_PROPERTY;
             action.buying_property = true;
             return action;
